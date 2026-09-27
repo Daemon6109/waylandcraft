@@ -3,7 +3,7 @@ use crate::ddm::WLCDataState;
 use crate::output::WLCOutput;
 use crate::satellite::SatelliteState;
 use crate::seat::WLCSeatState;
-use crate::xdg_spec::XDGSpecHelper;
+use crate::desktop::DesktopHelper;
 use libc::dev_t;
 use smithay::{
     backend::allocator::{Format, dmabuf::Dmabuf},
@@ -54,13 +54,13 @@ mod satellite;
 mod seat;
 mod svg;
 mod utils;
-mod xdg_spec;
+mod desktop;
 
 pub(crate) struct WaylandCraft<'a> {
     pub state: WLCState,
     pub event_loop: EventLoop<'a, WLCState>,
     pub bridge: BridgeState,
-    pub xdg: XDGSpecHelper,
+    pub desktop_helper: DesktopHelper,
 }
 
 pub struct WLCState {
@@ -337,7 +337,7 @@ pub(crate) fn wlc_init(
         })
         .unwrap();
 
-    let xdg = XDGSpecHelper::init();
+    let desktop_helper = DesktopHelper::init();
 
     match satellite::start_satellite(&state.socket) {
         Ok(s) => state.satellite = Some(s),
@@ -348,7 +348,7 @@ pub(crate) fn wlc_init(
         state,
         event_loop,
         bridge: BridgeState::new(),
-        xdg,
+        desktop_helper,
     };
     Ok(instance)
 }

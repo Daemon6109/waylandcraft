@@ -3,7 +3,7 @@
 use crate::WLCState;
 use crate::java_types::*;
 use crate::utils::get_time;
-use crate::xdg_spec::RawDesktopEntry;
+use crate::desktop::RawDesktopEntry;
 use crate::{DmabufFeedbackData, WaylandCraft, wlc_init};
 use jni::objects::{JIntArray, JLongArray, JObjectArray, JPrimitiveArray};
 use jni::{
@@ -1991,7 +1991,7 @@ fn load_desktop_entry<'local>(
 ) -> Result<JRawDesktopEntry<'local>, BridgeError> {
     let instance = jptr_to_instance!(instance)?;
     let path: PathBuf = path.try_to_string(env)?.into();
-    let entry = match instance.xdg.load_entry(path) {
+    let entry = match instance.desktop_helper.load_entry(path) {
         Some(e) => e,
         None => return Ok(JRawDesktopEntry::null()),
     };
@@ -2005,7 +2005,7 @@ fn load_desktop_entries<'local>(
     instance: jlong,
 ) -> Result<JObjectArray<'local, JRawDesktopEntry<'local>>, BridgeError> {
     let instance = jptr_to_instance!(instance)?;
-    let entries = instance.xdg.get_raw_entries();
+    let entries = instance.desktop_helper.get_raw_entries();
     let entries = entries
         .iter()
         .map(|e| raw_desktop_entry_to_java(env, e))
@@ -2058,7 +2058,7 @@ fn exec_app<'local>(
         env_vars.push(("DISPLAY".into(), s.get_display().into()));
     }
 
-    Ok(instance.xdg.exec_app(app_id, env_vars))
+    Ok(instance.desktop_helper.exec_app(app_id, env_vars))
 }
 
 fn set_preferred_terminal<'local>(
@@ -2070,7 +2070,7 @@ fn set_preferred_terminal<'local>(
     let instance = jptr_to_instance!(instance)?;
     let cmd = cmd.try_to_string(env)?;
 
-    instance.xdg.set_preferred_terminal(cmd);
+    instance.desktop_helper.set_preferred_terminal(cmd);
 
     Ok(())
 }

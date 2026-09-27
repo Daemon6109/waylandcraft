@@ -8,7 +8,7 @@ use std::collections::VecDeque;
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-pub struct XDGSpecHelper {
+pub struct DesktopHelper {
     locales: Vec<String>,
     entries: Vec<DesktopEntry>,
     preferred_terminal: String,
@@ -27,12 +27,12 @@ pub struct RawDesktopEntry {
     pub icon_path: Option<String>,
 }
 
-impl XDGSpecHelper {
+impl DesktopHelper {
     pub fn init() -> Self {
         let locales = get_languages_from_env();
         let entries = desktop_entries(&locales);
 
-        XDGSpecHelper {
+        DesktopHelper {
             locales,
             entries,
             preferred_terminal: String::new(),
