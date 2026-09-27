@@ -47,7 +47,6 @@ use std::sync::Arc;
 
 mod bridge;
 mod ddm;
-mod java_types;
 mod output;
 mod process;
 mod satellite;
