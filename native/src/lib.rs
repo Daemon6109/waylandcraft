@@ -1,9 +1,9 @@
 use crate::bridge::BridgeState;
 use crate::ddm::WLCDataState;
+use crate::desktop::DesktopHelper;
 use crate::output::WLCOutput;
 use crate::satellite::SatelliteState;
 use crate::seat::WLCSeatState;
-use crate::desktop::DesktopHelper;
 use libc::dev_t;
 use smithay::{
     backend::allocator::{Format, dmabuf::Dmabuf},
@@ -47,13 +47,13 @@ use std::sync::Arc;
 
 mod bridge;
 mod ddm;
+mod desktop;
 mod output;
 mod process;
 mod satellite;
 mod seat;
 mod svg;
 mod utils;
-mod desktop;
 
 pub(crate) struct WaylandCraft<'a> {
     pub state: WLCState,

@@ -1,10 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::bridge;
-use jni::{
-    bind_java_type,
-    sys::jint,
-};
+use jni::{bind_java_type, sys::jint};
 use smithay::backend::drm::CreateDrmNodeError;
 use thiserror::Error;
 
@@ -182,28 +179,28 @@ bind_java_type! {
         },
         static extern fn send_frame {
             sig = (surface_handle: jlong),
-            fn = bridge::send_frame,
+            fn = bridge::compositor::send_frame,
         },
         static extern fn update_surface_data {
             sig = (instance: jlong, surface: WLCSurface),
-            fn = bridge::update_surface_data,
+            fn = bridge::compositor::update_surface_data,
         },
         static extern fn toplevels {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::toplevels,
+            fn = bridge::shell::toplevels,
         },
         static extern fn toplevel_surface {
             sig = (instance: jlong, toplevel_handle: jlong) -> jlong,
-            fn = bridge::toplevel_surface,
+            fn = bridge::shell::toplevel_surface,
         },
         static extern fn toplevel_title {
             sig = (toplevel_handle: jlong) -> JString,
-            fn = bridge::toplevel_title,
+            fn = bridge::shell::toplevel_title,
         },
         static extern fn toplevel_app_id {
             sig = (toplevel_handle: jlong) -> JString,
             name = "toplevelAppID",
-            fn = bridge::toplevel_app_id,
+            fn = bridge::shell::toplevel_app_id,
         },
         static extern fn toplevel_resize {
             sig = (
@@ -212,92 +209,92 @@ bind_java_type! {
                 height: jint,
                 interactive: jboolean
             ),
-            fn = bridge::toplevel_resize,
+            fn = bridge::shell::toplevel_resize,
         },
         static extern fn toplevel_resize_ovr {
             sig = (toplevel_handle: jlong, width: jint, height: jint),
-            fn = bridge::toplevel_resize_ovr,
+            fn = bridge::shell::toplevel_resize_ovr,
         },
         static extern fn minimize_req {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::minimize_req,
+            fn = bridge::shell::minimize_req,
         },
         static extern fn maximize_req {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::maximize_req,
+            fn = bridge::shell::maximize_req,
         },
         static extern fn unmaximize_req {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::unmaximize_req,
+            fn = bridge::shell::unmaximize_req,
         },
         static extern fn fullscreen_req {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::fullscreen_req,
+            fn = bridge::shell::fullscreen_req,
         },
         static extern fn unfullscreen_req {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::unfullscreen_req,
+            fn = bridge::shell::unfullscreen_req,
         },
         static extern fn move_request {
             sig = (instance: jlong) -> jint[],
-            fn = bridge::move_request,
+            fn = bridge::shell::move_request,
         },
         static extern fn resize_request {
             sig = (instance: jlong) -> jint[],
-            fn = bridge::resize_request,
+            fn = bridge::shell::resize_request,
         },
         static extern fn fullscreened {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::fullscreened,
+            fn = bridge::shell::fullscreened,
         },
         static extern fn toplevel_maximize {
             sig = (instance: jlong, toplevel_handle: jlong),
-            fn = bridge::toplevel_maximize,
+            fn = bridge::shell::toplevel_maximize,
         },
         static extern fn toplevel_fullscreen {
             sig = (instance: jlong, toplevel_handle: jlong),
-            fn = bridge::toplevel_fullscreen,
+            fn = bridge::shell::toplevel_fullscreen,
         },
         static extern fn popups {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::popups,
+            fn = bridge::shell::popups,
         },
         static extern fn popup_surface {
             sig = (instance: jlong, popup_handle: jlong) -> jlong,
-            fn = bridge::popup_surface,
+            fn = bridge::shell::popup_surface,
         },
         static extern fn popup_parent {
             sig = (instance: jlong, popup_handle: jlong) -> jlong,
-            fn = bridge::popup_parent,
+            fn = bridge::shell::popup_parent,
         },
         static extern fn popup_offset {
             sig = (popup_handle: jlong) -> jint[],
-            fn = bridge::popup_offset,
+            fn = bridge::shell::popup_offset,
         },
         static extern fn surface_xdg_geometry {
             sig = (surface_handle: jlong) -> jint[],
             name = "surfaceXDGGeometry",
-            fn = bridge::surface_xdg_geometry,
+            fn = bridge::shell::surface_xdg_geometry,
         },
         static extern fn dmabufs {
             sig = (instance: jlong) -> jlong[],
-            fn = bridge::dmabufs
+            fn = bridge::dmabuf::dmabufs
         },
         extern fn check_import_dmabuf {
             sig = (instance: jlong),
-            fn = bridge::check_import_dmabuf,
+            fn = bridge::dmabuf::check_import_dmabuf,
         },
         extern fn update_surface_tree {
             sig = (instance: jlong, surface: WLCSurface) -> WLCSurface,
-            fn = bridge::update_surface_tree,
+            fn = bridge::compositor::update_surface_tree,
         },
         static extern fn check_input_region {
             sig = (surface_handle: jlong, x: jdouble, y: jdouble) -> jboolean,
-            fn = bridge::check_input_region,
+            fn = bridge::seat::check_input_region,
         },
         static extern fn pointer_motion {
             sig = (instance: jlong, x: jdouble, y: jdouble),
-            fn = bridge::pointer_motion,
+            fn = bridge::seat::pointer_motion,
         },
         static extern fn pointer_motion_focus {
             sig = (
@@ -306,91 +303,91 @@ bind_java_type! {
                 x: jdouble,
                 y: jdouble
             ),
-            fn = bridge::pointer_motion_focus,
+            fn = bridge::seat::pointer_motion_focus,
         },
         static extern fn pointer_rel_motion {
             sig = (instance: jlong, dx: jdouble, dy: jdouble),
-            fn = bridge::pointer_rel_motion,
+            fn = bridge::seat::pointer_rel_motion,
         },
         static extern fn maybe_pointer_lock {
             sig = (instance: jlong, surface_handle: jlong) -> jboolean,
-            fn = bridge::maybe_pointer_lock,
+            fn = bridge::seat::maybe_pointer_lock,
         },
         static extern fn pointer_unlock {
             sig = (instance: jlong),
-            fn = bridge::pointer_unlock,
+            fn = bridge::seat::pointer_unlock,
         },
         static extern fn pointer_leave {
             sig = (instance: jlong),
-            fn = bridge::pointer_leave,
+            fn = bridge::seat::pointer_leave,
         },
         static extern fn pointer_button {
             sig = (instance: jlong, button: jint, state: jint) -> jint,
-            fn = bridge::pointer_button,
+            fn = bridge::seat::pointer_button,
         },
         static extern fn pointer_axis {
             sig = (instance: jlong, axis: jint, value: jdouble),
-            fn = bridge::pointer_axis,
+            fn = bridge::seat::pointer_axis,
         },
         static extern fn cursor_shape {
             sig = (instance: jlong) -> jint,
-            fn = bridge::cursor_shape,
+            fn = bridge::seat::cursor_shape,
         },
         static extern fn keyboard_focus {
             sig = (instance: jlong, surface_handle: jlong),
-            fn = bridge::keyboard_focus,
+            fn = bridge::seat::keyboard_focus,
         },
         static extern fn keyboard_activate {
             sig = (instance: jlong),
-            fn = bridge::keyboard_activate,
+            fn = bridge::seat::keyboard_activate,
         },
         static extern fn keyboard_deactivate {
             sig = (instance: jlong),
-            fn = bridge::keyboard_deactivate,
+            fn = bridge::seat::keyboard_deactivate,
         },
         static extern fn keyboard_input {
             sig = (instance: jlong, scancode: jint, action: jint),
-            fn = bridge::keyboard_input,
+            fn = bridge::seat::keyboard_input,
         },
         static extern fn keyboard_update {
             sig = (instance: jlong, scancode: jint, pressed: jboolean),
-            fn = bridge::keyboard_update,
+            fn = bridge::seat::keyboard_update,
         },
         static extern fn output_size {
             sig = (instance: jlong) -> jint[],
-            fn = bridge::output_size,
+            fn = bridge::output::output_size,
         },
         static extern fn output_bounds {
             sig = (instance: jlong) -> jint[],
-            fn = bridge::output_bounds,
+            fn = bridge::output::output_bounds,
         },
         static extern fn output_resize {
             sig = (instance: jlong, width: jint, height: jint),
-            fn = bridge::output_resize,
+            fn = bridge::output::output_resize,
         },
         static extern fn output_set_bounds {
             sig = (instance: jlong, width: jint, height: jint),
-            fn = bridge::output_set_bounds,
+            fn = bridge::output::output_set_bounds,
         },
         static extern fn free_surface {
             sig = (instance: jlong, surface_handle: jlong),
-            fn = bridge::free_surface,
+            fn = bridge::compositor::free_surface,
         },
         static extern fn free_toplevel {
             sig = (instance: jlong, toplevel_handle: jlong),
-            fn = bridge::free_toplevel,
+            fn = bridge::shell::free_toplevel,
         },
         static extern fn free_popup {
             sig = (instance: jlong, popup_handle: jlong),
-            fn = bridge::free_popup,
+            fn = bridge::shell::free_popup,
         },
         static extern fn load_desktop_entry {
             sig = (instance: jlong, path: JString) -> JRawDesktopEntry,
-            fn = bridge::load_desktop_entry,
+            fn = bridge::desktop::load_desktop_entry,
         },
         static extern fn load_desktop_entries {
             sig = (instance: jlong) -> JRawDesktopEntry[],
-            fn = bridge::load_desktop_entries,
+            fn = bridge::desktop::load_desktop_entries,
         },
         static extern fn render_svg {
             sig = (
@@ -400,43 +397,43 @@ bind_java_type! {
                 buffer_ptr: jlong
             ) -> jboolean,
             name = "renderSVG",
-            fn = bridge::render_svg,
+            fn = bridge::desktop::render_svg,
         },
         static extern fn exec_app {
             sig = (instance: jlong, app_id: JString) -> jboolean,
-            fn = bridge::exec_app,
+            fn = bridge::desktop::exec_app,
         },
         static extern fn set_preferred_terminal {
             sig = (instance: jlong, cmd: JString),
-            fn = bridge::set_preferred_terminal,
+            fn = bridge::desktop::set_preferred_terminal,
         },
         static extern fn set_keymap_default {
             sig = (instance: jlong),
-            fn = bridge::set_keymap_default,
+            fn = bridge::seat::set_keymap_default,
         },
         static extern fn export_keymap {
             sig = (instance: jlong) -> JString,
-            fn = bridge::export_keymap,
+            fn = bridge::seat::export_keymap,
         },
         static extern fn set_keymap_from_str {
             sig = (instance: jlong, keymap: JString) -> jboolean,
-            fn = bridge::set_keymap_from_str,
+            fn = bridge::seat::set_keymap_from_str,
         },
         static extern fn check_dnd_request {
             sig = (instance: jlong) -> jint[],
-            fn = bridge::check_dnd_request,
+            fn = bridge::dnd::check_dnd_request,
         },
         static extern fn check_dnd_active {
             sig = (instance: jlong) -> jboolean,
-            fn = bridge::check_dnd_active,
+            fn = bridge::dnd::check_dnd_active,
         },
         static extern fn dnd_cancel {
             sig = (instance: jlong),
-            fn = bridge::dnd_cancel,
+            fn = bridge::dnd::dnd_cancel,
         },
         static extern fn dnd_drop {
             sig = (instance: jlong),
-            fn = bridge::dnd_drop,
+            fn = bridge::dnd::dnd_drop,
         },
         static extern fn dnd_motion {
             sig = (
@@ -445,19 +442,19 @@ bind_java_type! {
                 x: jdouble,
                 y: jdouble
             ),
-            fn = bridge::dnd_motion,
+            fn = bridge::dnd::dnd_motion,
         },
         static extern fn dnd_icon {
             sig = (instance: jlong) -> jlong,
-            fn = bridge::dnd_icon,
+            fn = bridge::dnd::dnd_icon,
         },
         static extern fn drm_device_by_path {
             sig = (path: JString) -> jlong,
-            fn = bridge::drm_device_by_path,
+            fn = bridge::dmabuf::drm_device_by_path,
         },
         static extern fn drm_device_by_major_minor {
             sig = (major: jint, minor: jint) -> jlong,
-            fn = bridge::drm_device_by_major_minor,
+            fn = bridge::dmabuf::drm_device_by_major_minor,
         },
     },
 }
