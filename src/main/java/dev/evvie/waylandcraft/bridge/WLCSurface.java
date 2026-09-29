@@ -11,7 +11,7 @@ import net.minecraft.util.Mth;
 
 public class WLCSurface {
 	
-	protected boolean alive = true;
+	protected long handle = 0;
 	protected boolean dirty = false;
 	
 	@Nullable
@@ -44,11 +44,12 @@ public class WLCSurface {
 	
 	private ArrayList<SurfaceDamage> damage = new ArrayList<>();
 	
-	protected WLCSurface() {
+	private WLCSurface(long handle) {
+		this.handle = handle;
 	}
 	
 	public boolean isAlive() {
-		return alive;
+		return handle != 0;
 	}
 	
 	protected void destroy() {
@@ -178,6 +179,8 @@ public class WLCSurface {
 	public WLCSurface getPrevChild() {
 		return this.prevChild;
 	}
+	
+	public native void sendFrame();
 	
 	// Surface-local dimensions of the source rectangle in a buffer
 	public static final record ViewportSource(double x, double y, double width, double height) {

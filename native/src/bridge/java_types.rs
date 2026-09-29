@@ -10,10 +10,11 @@ bind_java_type! {
     java_type = dev.evvie.waylandcraft.bridge.WLCSurface,
 
     constructors {
-        fn new(),
+        fn new(handle: jlong),
     },
 
     fields {
+        handle: jlong,
         dirty: jboolean,
         next_child: WLCSurface,
         prev_child: WLCSurface,
@@ -48,6 +49,13 @@ bind_java_type! {
         pub fn clear_damage(),
         pub fn add_buffer_damage(x: jint, y: jint, width: jint, height: jint),
         pub fn add_surface_damage(x: jint, y: jint, width: jint, height: jint),
+    },
+
+    native_methods {
+        extern fn send_frame {
+            sig = (),
+            fn = bridge::compositor::send_frame,
+        },
     },
 }
 
@@ -191,4 +199,8 @@ pub enum BridgeError {
     NullInstancePtr,
     #[error("Error converting OS string to UTF-8")]
     OsStringToUtf8,
+    #[error("Surface is already gone")]
+    SurfaceGone,
+    #[error("Surface is null")]
+    SurfaceNull,
 }

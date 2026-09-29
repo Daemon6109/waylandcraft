@@ -166,7 +166,7 @@ public class WaylandCraftBridge {
 		
 		// Do client frame callbacks
 		for(WLCSurface surface : surfaces) {
-//			sendFrame(surface.getHandle());
+			surface.sendFrame();
 		}
 		
 		// Flush outgoing display buffers
