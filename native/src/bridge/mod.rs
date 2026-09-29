@@ -1,11 +1,12 @@
 use crate::{
     WaylandCraft,
-    bridge::{dmabuf::dmabuf_feedback_from_java, java_types::*, sketchy::*},
+    bridge::{java_types::*, utils::*},
     wlc_init,
 };
 use jni::{
     Env,
     objects::{JClass, JString},
+    refs::Global,
     sys::jlong,
 };
 use smithay::{
@@ -13,49 +14,46 @@ use smithay::{
     reexports::wayland_server::protocol::wl_surface::WlSurface,
     wayland::shell::xdg::{PopupSurface, ToplevelSurface},
 };
+use std::mem::MaybeUninit;
 use std::time::Duration;
 
-mod compositor;
-mod desktop;
-mod dmabuf;
-mod dnd;
+pub mod compositor;
 mod java_types;
-mod output;
-mod seat;
-mod shell;
-mod sketchy;
+mod utils;
 
-#[allow(clippy::vec_box)]
 pub struct BridgeState {
-    /* Handle collections */
-    toplevels: Vec<Box<ToplevelSurface>>,
-    popups: Vec<Box<PopupSurface>>,
-    surfaces: Vec<Box<WlSurface>>,
-    dmabufs: Vec<Box<WeakDmabuf>>,
-}
-
-impl BridgeState {
-    pub fn new() -> Self {
-        BridgeState {
-            toplevels: vec![],
-            popups: vec![],
-            surfaces: vec![],
-            dmabufs: vec![],
-        }
-    }
+    pub java: Global<WaylandCraftBridge<'static>>,
 }
 
 fn init<'local>(
     env: &mut Env<'local>,
     _class: JClass<'local>,
-    dmabuf_feedback: JDmabufFeedbackData<'local>,
-) -> Result<jlong, BridgeError> {
-    let dmabuf_feedback = dmabuf_feedback_from_java(env, dmabuf_feedback)?;
-    let instance = wlc_init(dmabuf_feedback).map_err(BridgeError::Init)?;
-    let instance_box = Box::new(instance);
-    let ptr = Box::into_raw(instance_box);
+) -> Result<WaylandCraftBridge<'local>, BridgeError> {
+    // Create memory that holds the instance
+    let mut instance_box: Box<MaybeUninit<WaylandCraft>> = Box::new_uninit();
+    let ptr = instance_box.as_mut_ptr().addr() as jlong;
 
-    Ok(ptr.addr() as jlong)
+    // Call bridge constructor
+    // VERY IMPORTANT: The instance pointer is not initialized! The java code
+    // MUST NOT perform any bridge calls here!!
+    let bridge = WaylandCraftBridge::new(env, ptr)?;
+    let bridge_ref = env.new_global_ref(&bridge)?;
+
+    // Create bridge state
+    let bridge_state = BridgeState {
+        java: bridge_ref,
+    };
+
+    let instance = wlc_init(bridge_state, None).map_err(BridgeError::Init)?;
+
+    // Write instance to the memory allocated earlier
+    // After this any calls accessing the state using jptr_to_instance are O.K.
+    instance_box.write(instance);
+
+    // Prevent Rust from freeing the allocated memory
+    std::mem::forget(instance_box);
+
+    Ok(bridge)
 }
 
 fn shutdown<'local>(

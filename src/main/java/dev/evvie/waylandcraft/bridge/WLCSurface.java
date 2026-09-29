@@ -5,18 +5,14 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import dev.evvie.waylandcraft.WaylandCraft;
 import dev.evvie.waylandcraft.render.BufferTexture;
 import dev.evvie.waylandcraft.render.BufferTexture.DmabufTexture;
 import net.minecraft.util.Mth;
 
 public class WLCSurface {
 	
-	// Set to zero when this surface no longer exists
-	private long handle;
-	
-	// Used by native code to tag used surfaces
-	protected boolean visited;
+	protected boolean alive = true;
+	protected boolean dirty = false;
 	
 	@Nullable
 	private BufferTexture buffer = null;
@@ -27,8 +23,6 @@ public class WLCSurface {
 	
 	@Nullable
 	protected WLCSurface prevChild = null;
-	
-	protected long parentHandle = 0;
 	
 	@Nullable
 	protected WLCSurface parent = null;
@@ -50,22 +44,11 @@ public class WLCSurface {
 	
 	private ArrayList<SurfaceDamage> damage = new ArrayList<>();
 	
-	protected WLCSurface(long handle) {
-		this.handle = handle;
-	}
-	
-	protected long getHandle() {
-		return this.handle;
-	}
-	
-	protected long takeHandle() {
-		long old = this.handle;
-		this.handle = 0;
-		return old;
+	protected WLCSurface() {
 	}
 	
 	public boolean isAlive() {
-		return handle != 0;
+		return alive;
 	}
 	
 	protected void destroy() {
@@ -98,7 +81,8 @@ public class WLCSurface {
 	protected boolean attachDmabuf(long handle) {
 		removeBuffer();
 		
-		DmabufTexture dmabuf = WaylandCraft.instance.bridge.getDmabuf(handle);
+//		DmabufTexture dmabuf = WaylandCraft.instance.bridge.getDmabuf(handle);
+		DmabufTexture dmabuf = null;
 		if(dmabuf == null) return false;
 		
 		this.buffer = dmabuf;

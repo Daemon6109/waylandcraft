@@ -6,11 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.system.Platform;
 
@@ -19,15 +16,8 @@ import com.mojang.blaze3d.systems.GpuDeviceBackend;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import dev.evvie.waylandcraft.WaylandCraftCommon;
-import dev.evvie.waylandcraft.bridge.WLCAbstractWindow.SurfaceGeometry;
-import dev.evvie.waylandcraft.bridge.dmabuf.Dmabuf;
 import dev.evvie.waylandcraft.bridge.dmabuf.DmabufFeedbackData;
-import dev.evvie.waylandcraft.bridge.dmabuf.DmabufFormat;
 import dev.evvie.waylandcraft.desktop.RawDesktopEntry;
-import dev.evvie.waylandcraft.egl.EGL;
-import dev.evvie.waylandcraft.egl.EGLHelper;
-import dev.evvie.waylandcraft.render.BufferTexture;
-import dev.evvie.waylandcraft.render.BufferTexture.DmabufImportFailedException;
 import dev.evvie.waylandcraft.render.BufferTexture.DmabufTexture;
 import dev.evvie.waylandcraft.render.WindowFramebuffer;
 import dev.evvie.waylandcraft.utils.CursorShape;
@@ -112,14 +102,17 @@ public class WaylandCraftBridge {
 	}
 	
 	private WaylandCraftBridge(long instance) {
+		/* Constructor used by the native code.
+		 * DO NOT USE ANY BRIDGE FUNCTIONS HERE! The instance pointer is uninitialized until
+		 * WaylandCraftBridge#init() returns!
+		 */
 		this.instance = instance;
 	}
 	
 	public static WaylandCraftBridge start() {
-		DmabufFeedbackData dmabufFeedbackData = initBackend();
+//		DmabufFeedbackData dmabufFeedbackData = initBackend();
 		
-		long handle = init(dmabufFeedbackData);
-		WaylandCraftBridge bridge = new WaylandCraftBridge(handle);
+		WaylandCraftBridge bridge = init();
 		
 		// Add shutdown thread to clean up resources on normal exit
 		Runtime.getRuntime().addShutdownHook(new Thread(bridge::shutdownHook));
@@ -130,36 +123,67 @@ public class WaylandCraftBridge {
 	private static DmabufFeedbackData initBackend() {
 		GpuDeviceBackend deviceBackend = RenderSystem.getDevice().backend;
 		if(deviceBackend instanceof GlDevice) {
-			return initBackendEGL();
+//			return initBackendEGL();
 		}
 		
 		WaylandCraftCommon.LOGGER.error("Unsupported graphics backend!");
 		return null;
 	}
 	
-	private static DmabufFeedbackData initBackendEGL() {
-		long eglDisplay = EGL.getEGLDisplay();
-		if(eglDisplay == 0) {
-			throw new RuntimeException("Failed to get EGL display!");
-		}
-		
-		String renderNodePath = EGLHelper.queryRenderNodePath(eglDisplay);
-		if(renderNodePath == null) {
-			WaylandCraftCommon.LOGGER.error("Failed to query for drm render node! This could indicate a software renderer. Disabling dmabuf functionality.");
-			return null;
-		}
-		
-		DmabufFormat[] formats = EGLHelper.queryDmabufFormats(eglDisplay).toArray(DmabufFormat[]::new);
-		long device = drmDeviceByPath(renderNodePath);
-		
-		return new DmabufFeedbackData(device, formats);
-	}
+//	private static DmabufFeedbackData initBackendEGL() {
+//		long eglDisplay = EGL.getEGLDisplay();
+//		if(eglDisplay == 0) {
+//			throw new RuntimeException("Failed to get EGL display!");
+//		}
+//		
+//		String renderNodePath = EGLHelper.queryRenderNodePath(eglDisplay);
+//		if(renderNodePath == null) {
+//			WaylandCraftCommon.LOGGER.error("Failed to query for drm render node! This could indicate a software renderer. Disabling dmabuf functionality.");
+//			return null;
+//		}
+//		
+//		DmabufFormat[] formats = EGLHelper.queryDmabufFormats(eglDisplay).toArray(DmabufFormat[]::new);
+//		long device = drmDeviceByPath(renderNodePath);
+//		
+//		return new DmabufFeedbackData(device, formats);
+//	}
 	
 	private void shutdownHook() {
 		shutdown(instance);
 		instance = 0;
 	}
 	
+	public void update() {
+		ProfilerFiller profiler = Profiler.get();
+		profiler.push("wayland");
+		
+		// Dispatch wayland client events
+		profiler.push("dispatch clients");
+		dispatchClients(instance);
+		profiler.pop();
+		
+		updateFocusOrder();
+		
+		// Do client frame callbacks
+		for(WLCSurface surface : surfaces) {
+//			sendFrame(surface.getHandle());
+		}
+		
+		// Flush outgoing display buffers
+		flushDisplay(instance);
+		
+		profiler.pop();
+	}
+	
+	protected void addSurface(WLCSurface surface) {
+		surfaces.add(surface);
+	}
+	
+	protected void deleteSurface(WLCSurface surface) {
+		surfaces.remove(surface);
+	}
+	
+	/*
 	protected WLCToplevel getOrCreateToplevel(long topLevelHandle) {
 		for(WLCToplevel toplevel : toplevels) {
 			if(toplevel.getHandle() == topLevelHandle) return toplevel;
@@ -487,32 +511,33 @@ public class WaylandCraftBridge {
 		
 		WindowFramebuffer.endFrame();
 	}
+	*/
 	
-	private void updateGeometry(WLCAbstractWindow window) {
-		int[] data = surfaceXDGGeometry(window.surface.getHandle());
-		SurfaceGeometry geometry;
-		
-		if(data == null) {
-			geometry = new SurfaceGeometry(0, 0, window.surface.width(), window.surface.height());
-		}
-		else {
-			geometry = new SurfaceGeometry(data[0], data[1], data[2], data[3]);
-		}
-		
-		window.geometry = geometry;
-	}
+//	private void updateGeometry(WLCAbstractWindow window) {
+//		int[] data = surfaceXDGGeometry(window.surface.getHandle());
+//		SurfaceGeometry geometry;
+//		
+//		if(data == null) {
+//			geometry = new SurfaceGeometry(0, 0, window.surface.width(), window.surface.height());
+//		}
+//		else {
+//			geometry = new SurfaceGeometry(data[0], data[1], data[2], data[3]);
+//		}
+//		
+//		window.geometry = geometry;
+//	}
 	
-	private void calculateSubpos(WLCSurface surface) {
-		if(surface.parent != null) {
-			calculateSubpos(surface.parent);
-			surface.xSubpos = surface.parent.xSubpos + surface.xoff;
-			surface.ySubpos = surface.parent.ySubpos + surface.yoff;
-		}
-		else {
-			surface.xSubpos = 0;
-			surface.ySubpos = 0;
-		}
-	}
+//	private void calculateSubpos(WLCSurface surface) {
+//		if(surface.parent != null) {
+//			calculateSubpos(surface.parent);
+//			surface.xSubpos = surface.parent.xSubpos + surface.xoff;
+//			surface.ySubpos = surface.parent.ySubpos + surface.yoff;
+//		}
+//		else {
+//			surface.xSubpos = 0;
+//			surface.ySubpos = 0;
+//		}
+//	}
 	
 	public WLCToplevel[] getToplevels() {
 		return toplevels.toArray(new WLCToplevel[toplevels.size()]);
@@ -539,56 +564,61 @@ public class WaylandCraftBridge {
 	}
 	
 	public @Nullable String getX11Display() {
-		return x11Display(this.instance);
+//		return x11Display(this.instance);
+		return null;
 	}
 	
 	public boolean inputRegionContains(WLCSurface surface, double x, double y) {
-		return checkInputRegion(surface.getHandle(), x, y);
+//		return checkInputRegion(surface.getHandle(), x, y);
+		return false;
 	}
 	
 	public void sendMotion(double x, double y) {
-		pointerMotion(instance, x, y);
+//		pointerMotion(instance, x, y);
 	}
 	
 	public void sendMotionRefocus(WLCSurface surface, double x, double y) {
-		pointerMotionFocus(instance, surface.getHandle(), x, y);
+//		pointerMotionFocus(instance, surface.getHandle(), x, y);
 	}
 	
 	public void sendRelativeMotion(double dx, double dy) {
-		pointerRelMotion(instance, dx, dy);
+//		pointerRelMotion(instance, dx, dy);
 	}
 	
 	public void sendMotionOutside() {
-		pointerLeave(instance);
+//		pointerLeave(instance);
 	}
 	
 	public boolean maybeLockPointer(WLCSurface surface) {
-		return maybePointerLock(instance, surface.getHandle());
+//		return maybePointerLock(instance, surface.getHandle());
+		return false;
 	}
 	
 	public void unlockPointer() {
-		pointerUnlock(instance);
+//		pointerUnlock(instance);
 	}
 	
 	public int sendButton(int button, int state) {
-		return pointerButton(instance, button, state);
+//		return pointerButton(instance, button, state);
+		return -1;
 	}
 	
 	public void sendScroll(int axis, double value) {
-		pointerAxis(instance, axis, value);
+//		pointerAxis(instance, axis, value);
 	}
 	
 	public CursorShape getCursorShape() {
-		return CursorShape.fromId(cursorShape(instance));
+//		return CursorShape.fromId(cursorShape(instance));
+		return CursorShape.DEFAULT;
 	}
 	
 	public void focusSurface(@Nullable WLCToplevel toplevel) {
-		long handle = 0;
-		if(toplevel != null) {
-			handle = toplevel.getHandle();
-		}
+//		long handle = 0;
+//		if(toplevel != null) {
+//			handle = toplevel.getHandle();
+//		}
 		
-		keyboardFocus(instance, handle);
+//		keyboardFocus(instance, handle);
 		
 		// Make toplevel most recently focused
 		if(toplevel != null) {
@@ -598,11 +628,11 @@ public class WaylandCraftBridge {
 	}
 	
 	public void activateKeyboard() {
-		keyboardActivate(instance);
+//		keyboardActivate(instance);
 	}
 	
 	public void deactivateKeyboard() {
-		keyboardDeactivate(instance);
+//		keyboardDeactivate(instance);
 	}
 	
 	private void updateFocusOrder() {
@@ -625,124 +655,142 @@ public class WaylandCraftBridge {
 	}
 	
 	public void pressKey(int scancode) {
-		keyboardInput(instance, scancode, 1);
+//		keyboardInput(instance, scancode, 1);
 	}
 	
 	public void releaseKey(int scancode) {
-		keyboardInput(instance, scancode, 0);
+//		keyboardInput(instance, scancode, 0);
 	}
 	
 	public void internalKeyUpdate(int scancode, boolean pressed) {
-		keyboardUpdate(instance, scancode, pressed);
+//		keyboardUpdate(instance, scancode, pressed);
 	}
 	
 	public void resizeToplevelInteractive(WLCToplevel toplevel, int width, int height) {
-		toplevelResize(toplevel.getHandle(), width, height, true);
+//		toplevelResize(toplevel.getHandle(), width, height, true);
 	}
 	
 	public void resizeToplevel(WLCToplevel toplevel, int width, int height) {
-		toplevelResize(toplevel.getHandle(), width, height, false);
+//		toplevelResize(toplevel.getHandle(), width, height, false);
 	}
 	
 	public void resizeToplevelOverride(WLCToplevel toplevel, int width, int height) {
-		toplevelResizeOvr(toplevel.getHandle(), width, height);
+//		toplevelResizeOvr(toplevel.getHandle(), width, height);
 	}
 	
 	public void maximizeToplevel(WLCToplevel toplevel) {
-		toplevelMaximize(instance, toplevel.getHandle());
+//		toplevelMaximize(instance, toplevel.getHandle());
 	}
 	
 	public void fullscreenToplevel(WLCToplevel toplevel) {
-		toplevelFullscreen(instance, toplevel.getHandle());
+//		toplevelFullscreen(instance, toplevel.getHandle());
 	}
 	
 	public Integer checkMoveRequest() {
-		if(lastMoveRequestSerial == null) return null;
-		int serial = lastMoveRequestSerial.intValue();
-		lastMoveRequestSerial = null;
-		return serial;
+//		if(lastMoveRequestSerial == null) return null;
+//		int serial = lastMoveRequestSerial.intValue();
+//		lastMoveRequestSerial = null;
+//		return serial;
+		return null;
 	}
 	
 	public ResizeRequest checkResizeRequest() {
-		if(lastResizeRequest == null) return null;
-		ResizeRequest req = lastResizeRequest;
-		lastResizeRequest = null;
-		return req;
+//		if(lastResizeRequest == null) return null;
+//		ResizeRequest req = lastResizeRequest;
+//		lastResizeRequest = null;
+//		return req;
+		return null;
 	}
 	
 	public void resizeOutput(int width, int height) {
-		outputResize(instance, width, height);
+//		outputResize(instance, width, height);
 	}
 	
 	public void setOutputBounds(int width, int height) {
-		outputSetBounds(instance, width, height);
+//		outputSetBounds(instance, width, height);
 	}
 	
 	public Size getOutputSize() {
-		int[] size = outputSize(instance);
-		return new Size(size[0], size[1]);
+//		int[] size = outputSize(instance);
+//		return new Size(size[0], size[1]);
+		return new Size(1, 1);
 	}
 	
 	public Size getOutputBounds() {
-		int[] size = outputBounds(instance);
-		return new Size(size[0], size[1]);
+//		int[] size = outputBounds(instance);
+//		return new Size(size[0], size[1]);
+		return new Size(1, 1);
 	}
 	
 	public RawDesktopEntry loadDesktopEntry(File path) {
-		return loadDesktopEntry(instance, path.getAbsolutePath());
+//		return loadDesktopEntry(instance, path.getAbsolutePath());
+		return null;
 	}
 	
 	public RawDesktopEntry[] loadSystemDesktopEntries() {
-		return loadDesktopEntries(instance);
+//		return loadDesktopEntries(instance);
+		return new RawDesktopEntry[] {};
 	}
 	
 	public boolean renderSVG(File file, int width, int height, long bufferPtr) {
-		return renderSVG(file.getAbsolutePath(), width, height, bufferPtr);
+//		return renderSVG(file.getAbsolutePath(), width, height, bufferPtr);
+		return false;
 	}
 	
 	public boolean execApp(String appId) {
-		return execApp(instance, appId);
+//		return execApp(instance, appId);
+		return true;
 	}
 	
 	public void setPreferredTerminal(String cmd) {
-		setPreferredTerminal(instance, cmd);
+//		setPreferredTerminal(instance, cmd);
 	}
 	
 	public void setKeymapDefault() {
-		setKeymapDefault(instance);
+//		setKeymapDefault(instance);
 	}
 	
 	public String exportKeymap() {
-		return exportKeymap(instance);
+//		return exportKeymap(instance);
+		return "";
 	}
 	
 	public boolean setKeymapFromStr(String keymap) {
-		return setKeymapFromStr(instance, keymap);
+//		return setKeymapFromStr(instance, keymap);
+		return true;
 	}
 	
 	public Integer checkDndRequest() {
-		int[] serial = checkDndRequest(instance);
-		if(serial == null) return null;
-		return serial[0];
+//		int[] serial = checkDndRequest(instance);
+//		if(serial == null) return null;
+//		return serial[0];
+		return null;
 	}
 	
 	public void dndCancel() {
-		dndCancel(instance);
+//		dndCancel(instance);
 	}
 	
 	public void dndDrop() {
-		dndDrop(instance);
+//		dndDrop(instance);
 	}
 	
 	public void sendDndMotion(WLCSurface surface, double x, double y) {
-		long handle = surface == null ? 0 : surface.getHandle();
-		dndMotion(instance, handle, x, y);
+//		long handle = surface == null ? 0 : surface.getHandle();
+//		dndMotion(instance, handle, x, y);
 	}
 	
 	public static record Size(int width, int height) {}
 	
 	public static record ResizeRequest(int serial, int edges) {}
 	
+	private static native WaylandCraftBridge init();
+	private static native void shutdown(long instance);
+	private static native void dispatchClients(long instance);
+	private static native void flushDisplay(long instance);
+	private static native String socket(long instance);
+	
+	/*
 	private static native long init(@Nullable DmabufFeedbackData dmabufFeedbackData);
 	private static native void shutdown(long instance);
 	private static native void dispatchClients(long instance);
@@ -882,5 +930,6 @@ public class WaylandCraftBridge {
 	
 	private static native long drmDeviceByPath(String path);
 	private static native long drmDeviceByMajorMinor(int major, int minor);
+	*/
 	
 }

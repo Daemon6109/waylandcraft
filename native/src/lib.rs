@@ -55,10 +55,10 @@ mod seat;
 mod svg;
 mod utils;
 
-pub(crate) struct WaylandCraft<'a> {
+// Global compositor state
+pub struct WaylandCraft<'a> {
     pub state: WLCState,
     pub event_loop: EventLoop<'a, WLCState>,
-    pub bridge: BridgeState,
     pub desktop_helper: DesktopHelper,
 }
 
@@ -77,7 +77,7 @@ pub struct WLCState {
     pub data: WLCDataState,
     pub output: WLCOutput,
     pub satellite: Option<SatelliteState>,
-    pub pending_dmabuf_imports: Vec<(Dmabuf, dmabuf::ImportNotifier)>,
+    pub bridge: BridgeState,
 }
 
 #[derive(Default)]
@@ -99,6 +99,7 @@ pub struct DmabufFeedbackData {
 impl WLCState {
     fn new(
         disp: DisplayHandle,
+        bridge_state: BridgeState,
         dmabuf_feedback: Option<DmabufFeedbackData>,
     ) -> Self {
         let compositor_state = CompositorState::new::<WLCState>(&disp);
@@ -143,7 +144,7 @@ impl WLCState {
             data,
             output,
             satellite: None,
-            pending_dmabuf_imports: vec![],
+            bridge: bridge_state,
         }
     }
 }
@@ -173,6 +174,14 @@ impl CompositorHandler for WLCState {
         &client.get_data::<WLCClient>().unwrap().compositor_state
     }
 
+    fn new_surface(&mut self, surface: &WlSurface) {
+        bridge::compositor::new_surface(self, surface);
+    }
+
+    fn destroyed(&mut self, surface: &WlSurface) {
+        bridge::compositor::surface_destroyed(self, surface);
+    }
+
     fn commit(&mut self, _surface: &WlSurface) {}
 }
 
@@ -197,7 +206,6 @@ impl DmabufHandler for WLCState {
         dmabuf: Dmabuf,
         notifier: dmabuf::ImportNotifier,
     ) {
-        self.pending_dmabuf_imports.push((dmabuf, notifier));
     }
 }
 
@@ -300,14 +308,19 @@ impl ClientData for WLCClient {
     fn disconnected(&self, _id: ClientId, _reason: DisconnectReason) {}
 }
 
-pub(crate) fn wlc_init(
+pub fn wlc_init(
+    bridge_state: BridgeState,
     dmabuf_feedback: Option<DmabufFeedbackData>,
 ) -> Result<WaylandCraft<'static>, Box<dyn std::error::Error>> {
     let event_loop: EventLoop<WLCState> = EventLoop::try_new()?;
     let display: Display<WLCState> = Display::new()?;
     let socket = ListeningSocketSource::new_auto()?;
 
-    let mut state = WLCState::new(display.handle(), dmabuf_feedback);
+    let mut state = WLCState::new(
+        display.handle(),
+        bridge_state,
+        dmabuf_feedback
+    );
     state.socket = socket.socket_name().to_os_string();
 
     let ev_handle = event_loop.handle();
@@ -338,15 +351,16 @@ pub(crate) fn wlc_init(
 
     let desktop_helper = DesktopHelper::init();
 
+    /*
     match satellite::start_satellite(&state.socket) {
         Ok(s) => state.satellite = Some(s),
         Err(e) => eprintln!("Failed to start xwayland-satellite! Error: {e}"),
     }
+    */
 
     let instance = WaylandCraft {
         state,
         event_loop,
-        bridge: BridgeState::new(),
         desktop_helper,
     };
     Ok(instance)

@@ -31,6 +31,7 @@ import dev.evvie.waylandcraft.grabs.PointerGrabMap;
 import dev.evvie.waylandcraft.grabs.PointerGrabMap.ImplicitGrab;
 import dev.evvie.waylandcraft.grabs.ResizeGrab;
 import dev.evvie.waylandcraft.gui.AppLauncherScreen;
+import dev.evvie.waylandcraft.gui.TestScreen;
 import dev.evvie.waylandcraft.gui.WaylandHudRenderer;
 import dev.evvie.waylandcraft.gui.WindowManagerScreen;
 import dev.evvie.waylandcraft.item.WindowHandle;
@@ -95,6 +96,7 @@ public class WaylandCraft implements ClientModInitializer {
 	public KeyMapping keyOpenScreen;
 	public KeyMapping keyOpenAppLauncher;
 	public KeyMapping keyCaptureKeyboard;
+	public KeyMapping keyDoStuff;
 	
 	public WindowInHandRenderer windowInHandRenderer = new WindowInHandRenderer();
 	public WindowInItemFrameRenderer windowInItemFrameRenderer = new WindowInItemFrameRenderer();
@@ -124,6 +126,7 @@ public class WaylandCraft implements ClientModInitializer {
 		keyOpenScreen = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.windowManager", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, KEYBIND_CATEGORY));
 		keyOpenAppLauncher = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.appLauncher", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, KEYBIND_CATEGORY));
 		keyCaptureKeyboard = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.captureKeyboard", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, KEYBIND_CATEGORY));
+		keyDoStuff = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.doStuff", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, KEYBIND_CATEGORY));
 		
 		WindowItemModel.register();
 		
@@ -239,7 +242,7 @@ public class WaylandCraft implements ClientModInitializer {
 		
 		updateDisplayRequests();
 		
-		itemManager.giveItemsIfMissing(bridge.getNewToplevels());
+//		itemManager.giveItemsIfMissing(bridge.getNewToplevels());
 		
 		boolean inWMScreen = Minecraft.getInstance().screen instanceof WindowManagerScreen;
 		
@@ -286,6 +289,9 @@ public class WaylandCraft implements ClientModInitializer {
 		}
 		else if(keyCaptureKeyboard.consumeClick()) {
 			enableKeyboardCapture(false);
+		}
+		else if(keyDoStuff.consumeClick()) {
+			minecraft.setScreen(new TestScreen());
 		}
 	}
 	
