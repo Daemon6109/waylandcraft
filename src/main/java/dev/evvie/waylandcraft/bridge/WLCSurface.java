@@ -45,7 +45,8 @@ public class WLCSurface {
 	public int xSubpos = 0;
 	public int ySubpos = 0;
 	
-	private ArrayList<SurfaceDamage> damage = new ArrayList<>();
+	private ArrayList<SurfaceDamage> surfaceDamage = new ArrayList<>();
+	private ArrayList<BufferDamage> bufferDamage = new ArrayList<>();
 	
 	private WLCSurface(long handle) {
 		this.handle = handle;
@@ -123,36 +124,67 @@ public class WLCSurface {
 	}
 	
 	protected void clearDamage() {
-		damage.clear();
+		surfaceDamage.clear();
+		bufferDamage.clear();
 	}
 	
 	protected void addSurfaceDamage(int x, int y, int width, int height) {
-		this.damage.add(new SurfaceDamage(x, y, width, height));
+		if(buffer == null) return;
+		
+		this.surfaceDamage.add(new SurfaceDamage(x, y, width, height));
+		
+		double sourceX = 0;
+		double sourceY = 0;
+		double sourceWidth = buffer.width;
+		double sourceHeight = buffer.height;
+		if(sourceView != null) {
+			sourceX = sourceView.x;
+			sourceY = sourceView.y;
+			sourceWidth = sourceView.width;
+			sourceHeight = sourceView.height;
+		}
+		
+		double bx = sourceX + x / (double) this.width * sourceWidth;
+		double by = sourceY + y / (double) this.height * sourceHeight;
+		double bw = width / (double) this.width * sourceWidth;
+		double bh = height / (double) this.height * sourceHeight;
+		
+		this.bufferDamage.add(new BufferDamage(Mth.floor(bx), Mth.floor(by), Mth.ceil(bw), Mth.ceil(bh)));
 	}
 	
 	protected void addBufferDamage(int x, int y, int width, int height) {
 		if(buffer == null) return;
+		
+		bufferDamage.add(new BufferDamage(x, y, width, height));
 		
 		double sx = x;
 		double sy = y;
 		double sw = width;
 		double sh = height;
 		
+		double sourceWidth = buffer.width;
+		double sourceHeight = buffer.height;
 		if(sourceView != null) {
 			sx -= sourceView.x;
 			sy -= sourceView.y;
+			sourceWidth = sourceView.width;
+			sourceHeight = sourceView.height;
 		}
 		
-		sx *= this.width / buffer.width;
-		sy *= this.height / buffer.height;
-		sw *= this.width / buffer.width;
-		sh *= this.height / buffer.height;
+		sx *= this.width / sourceWidth;
+		sy *= this.height / sourceHeight;
+		sw *= this.width / sourceWidth;
+		sh *= this.height / sourceHeight;
 		
-		addSurfaceDamage(Mth.floor(sx), Mth.floor(sy), Mth.ceil(sw), Mth.ceil(sh));
+		this.surfaceDamage.add(new SurfaceDamage(Mth.floor(sx), Mth.floor(sy), Mth.ceil(sw), Mth.ceil(sh)));
 	}
 	
-	public List<SurfaceDamage> getDamage() {
-		return damage;
+	public List<SurfaceDamage> getSurfaceDamage() {
+		return surfaceDamage;
+	}
+	
+	public List<BufferDamage> getBufferDamage() {
+		return bufferDamage;
 	}
 	
 	public int width() {
@@ -199,6 +231,10 @@ public class WLCSurface {
 	
 	// Surface-local region describing contents damage
 	public static final record SurfaceDamage(int x, int y, int width, int height) {
+	}
+	
+	// Buffer-local region describing contents damage
+	public static final record BufferDamage(int x, int y, int width, int height) {
 	}
 	
 }

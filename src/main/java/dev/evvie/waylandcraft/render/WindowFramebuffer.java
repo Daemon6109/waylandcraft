@@ -207,7 +207,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 			int sx = xoff + surface.xSubpos;
 			int sy = yoff + surface.ySubpos;
 			
-			for(SurfaceDamage damage : surface.getDamage()) {
+			for(SurfaceDamage damage : surface.getSurfaceDamage()) {
 				damageElements.add(new BufferDraw(null, sx + damage.x(), sy + damage.y(), damage.width(), damage.height(), 0, 0, 0, 0, false).compile());
 			}
 		}
