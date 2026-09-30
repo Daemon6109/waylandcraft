@@ -12,9 +12,6 @@ public abstract class WLCAbstractWindow {
 	@Nullable
 	protected WLCSurface surface;
 	
-	@Nullable
-	protected WLCSurface lastChild;
-	
 	protected boolean wasMapped = false;
 	
 	public SurfaceGeometry geometry;
@@ -40,16 +37,12 @@ public abstract class WLCAbstractWindow {
 		return handle != 0;
 	}
 	
-	public WLCSurface getSurfaceTree() {
+	public WLCSurface getRootSurface() {
 		return this.surface;
 	}
 	
-	public WLCSurface getSurfaceTreeLast() {
-		return this.lastChild;
-	}
-	
 	public boolean isMapped() {
-		return isAlive() && getSurfaceTree().getBuffer() != null;
+		return isAlive() && getRootSurface().getBuffer() != null;
 	}
 	
 	public static record SurfaceGeometry(int x, int y, int width, int height) {

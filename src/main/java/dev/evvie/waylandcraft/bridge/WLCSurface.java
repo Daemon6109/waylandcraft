@@ -17,15 +17,18 @@ public class WLCSurface {
 	@Nullable
 	private BufferTexture buffer = null;
 	
-	// Either a child of this surface or one of its siblings
-	@Nullable
-	protected WLCSurface nextChild = null;
-	
-	@Nullable
-	protected WLCSurface prevChild = null;
-	
 	@Nullable
 	protected WLCSurface parent = null;
+	
+	protected WLCSurface[] children = new WLCSurface[0];
+	
+	// Entire surface tree in drawing order (back to front). Contains the surface itself. This field is non-null exactly when this surface is a root surface.
+	@Nullable
+	protected WLCSurface[] surfaceDrawTree = null;
+	
+	// Entire surface tree in input order (front to back). Contains the surface itself. This field is non-null exactly when this surface is a root surface.
+	@Nullable
+	protected WLCSurface[] surfaceInputTree = null;
 	
 	// Surface size. By default the size of the attached buffer.
 	private int width = 0;
@@ -108,6 +111,10 @@ public class WLCSurface {
 		this.height = (int) height;
 	}
 	
+	protected void unsetViewportSrc() {
+		this.sourceView = null;
+	}
+	
 	// Set viewport destination dimensions
 	// Overrides this surfaces width & height values.
 	protected void setViewportDst(int width, int height) {
@@ -170,14 +177,18 @@ public class WLCSurface {
 		return this.parent;
 	}
 	
-	@Nullable
-	public WLCSurface getNextChild() {
-		return this.nextChild;
+	public WLCSurface[] getChildren() {
+		return this.children;
 	}
 	
 	@Nullable
-	public WLCSurface getPrevChild() {
-		return this.prevChild;
+	public WLCSurface[] getDrawTree() {
+		return surfaceDrawTree;
+	}
+	
+	@Nullable
+	public WLCSurface[] getInputTree() {
+		return surfaceInputTree;
 	}
 	
 	public native void sendFrame();

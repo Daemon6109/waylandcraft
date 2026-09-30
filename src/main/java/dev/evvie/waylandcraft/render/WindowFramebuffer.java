@@ -114,7 +114,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		int maxX = 0;
 		int maxY = 0;
 		
-		for(WLCSurface surface = surfaceTree; surface != null; surface = surface.getNextChild()) {
+		for(WLCSurface surface : surfaceTree.getDrawTree()) {
 			int sMinX = surface.xSubpos;
 			int sMinY = surface.ySubpos;
 			int sMaxX = sMinX + surface.width();
@@ -165,7 +165,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		poseStack.scale(2.0f / width, 2.0f / height, 1.0f);
 		
 		ArrayList<CompiledBufferDraw> elements = new ArrayList<>();
-		for(WLCSurface surface = surfaceTree; surface != null; surface = surface.getNextChild()) {
+		for(WLCSurface surface : surfaceTree.getDrawTree()) {
 			BufferDraw draw = bakeSurface(surface, xoff + surface.xSubpos, yoff + surface.ySubpos);
 			if(draw != null) elements.add(draw.compile());
 		}
@@ -203,7 +203,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	
 	private void drawDebugDamage(GpuBufferSlice opaqueUniforms) {
 		ArrayList<CompiledBufferDraw> damageElements = new ArrayList<>();
-		for(WLCSurface surface = surfaceTree; surface != null; surface = surface.getNextChild()) {
+		for(WLCSurface surface : surfaceTree.getDrawTree()) {
 			int sx = xoff + surface.xSubpos;
 			int sy = yoff + surface.ySubpos;
 			

@@ -16,11 +16,14 @@ bind_java_type! {
     fields {
         handle: jlong,
         dirty: jboolean,
-        next_child: WLCSurface,
-        prev_child: WLCSurface,
         parent: WLCSurface,
+        children: WLCSurface[],
+        surface_draw_tree: WLCSurface[],
+        surface_input_tree: WLCSurface[],
         xoff: jint,
         yoff: jint,
+        x_subpos: jint,
+        y_subpos: jint,
     },
 
     methods {
@@ -31,6 +34,7 @@ bind_java_type! {
             width: jdouble,
             height: jdouble
         ),
+        pub fn unset_viewport_src(),
         pub fn set_viewport_dst(width: jint, height: jint),
         pub fn attach_shm_buffer(
             ptr: jlong,

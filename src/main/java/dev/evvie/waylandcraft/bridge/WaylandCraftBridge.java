@@ -183,6 +183,10 @@ public class WaylandCraftBridge {
 		surfaces.remove(surface);
 	}
 	
+	public WLCSurface[] getAllSurfaces() {
+		return surfaces.toArray(WLCSurface[]::new);
+	}
+	
 	/*
 	protected WLCToplevel getOrCreateToplevel(long topLevelHandle) {
 		for(WLCToplevel toplevel : toplevels) {

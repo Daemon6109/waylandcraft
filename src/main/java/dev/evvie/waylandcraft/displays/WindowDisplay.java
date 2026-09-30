@@ -104,7 +104,7 @@ public class WindowDisplay extends AbstractWindowDisplay {
 		WLCSurface hitSurface = null;
 		Vec3 localCoordsRelative = null;
 		
-		for(WLCSurface surface = window.getSurfaceTreeLast(); surface != null; surface = surface.getPrevChild()) {
+		for(WLCSurface surface : window.getRootSurface().getInputTree()) {
 			Vec3 rel = localCoords.subtract(surface.xSubpos, surface.ySubpos, 0);
 			
 			int width = surface.width();

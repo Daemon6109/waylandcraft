@@ -378,7 +378,8 @@ public class WindowManagerScreen extends Screen {
 			float sx = (float) x - element.x;
 			float sy = (float) y - element.y;
 			
-			for(WLCSurface surface = element.window.getSurfaceTreeLast(); surface != null; surface = surface.getPrevChild()) {
+//			for(WLCSurface surface = element.window.getSurfaceTreeLast(); surface != null; surface = surface.getPrevChild()) {
+			for(WLCSurface surface : element.window.getRootSurface().getInputTree()) {
 				float rx = sx - surface.xSubpos;
 				float ry = sy - surface.ySubpos;
 				
@@ -447,8 +448,13 @@ public class WindowManagerScreen extends Screen {
 		}
 		else {
 			for(WindowElement elem : windows) {
-				WLCSurface surface;
-				for(surface = elem.window.getSurfaceTree(); surface != null && surface != implicitGrab.surface; surface = surface.getNextChild()) {}
+				WLCSurface surface = null;
+				for(WLCSurface other : elem.window.getRootSurface().getDrawTree()) {
+					if(other == implicitGrab.surface) {
+						surface = other;
+						break;
+					}
+				}
 				if(surface == implicitGrab.surface) {
 					// Surface was found in this window elements' surface tree
 					

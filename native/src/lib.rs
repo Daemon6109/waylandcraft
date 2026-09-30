@@ -182,7 +182,13 @@ impl CompositorHandler for WLCState {
         bridge::compositor::surface_destroyed(self, surface);
     }
 
-    fn commit(&mut self, _surface: &WlSurface) {}
+    fn new_subsurface(&mut self, surface: &WlSurface, parent: &WlSurface) {
+        bridge::compositor::subsurface_created(self, surface, parent);
+    }
+
+    fn commit(&mut self, surface: &WlSurface) {
+        bridge::compositor::surface_commit(self, surface);
+    }
 }
 
 impl BufferHandler for WLCState {
