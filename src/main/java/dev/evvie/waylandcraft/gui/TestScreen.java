@@ -2,17 +2,13 @@ package dev.evvie.waylandcraft.gui;
 
 import org.joml.Matrix3x2fStack;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.FilterMode;
-
 import dev.evvie.waylandcraft.WaylandCraft;
 import dev.evvie.waylandcraft.bridge.WLCSurface;
-import dev.evvie.waylandcraft.render.BufferTexture;
+import dev.evvie.waylandcraft.render.WindowFramebuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.ARGB;
 
 public class TestScreen extends Screen {
 	
@@ -36,56 +32,18 @@ public class TestScreen extends Screen {
 		
 		context.fill(0, 0, 0, 0, 0); // force blurred background to render
 		
-		WLCSurface root = null;
+		int x = 10;
+		int y = 10;
 		WLCSurface[] surfaces = WaylandCraft.instance.bridge.getAllSurfaces();
 		for(WLCSurface surface : surfaces) {
-			if(surface.getParent() == null) {
-				root = surface;
+			if(surface.getParent() != null) continue;
+			
+			WindowFramebuffer buf = surface.getFramebuffer();
+			if(buf != null && buf.isValid()) {
+				context.blit(buf.getTextureLocation(), x, y, x + buf.getWidth(), y + buf.getHeight(), 0, 1, 0, 1);
+				x += buf.getWidth();
 			}
 		}
-		
-		WLCSurface[] tree;
-		if(root != null && (tree = root.getDrawTree()) != null) {
-			for(WLCSurface surface : tree) {
-				int x = 10 + surface.xSubpos;
-				int y = 10 + surface.ySubpos;
-				int w = surface.width();
-				int h = surface.height();
-				
-				context.outline(x, y, w, h, ARGB.color(255, 255, 255));
-				
-				BufferTexture buffer;
-				if((buffer = surface.getBuffer()) != null) {
-					context.blit(buffer.getTextureView(), RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST), x, y, x + w, y + h, 0, 1, 0, 1);
-				}
-			}
-		}
-		
-//		int fbWidth = Minecraft.getInstance().getWindow().getWidth();
-//		int x = 0;
-//		int y = 0;
-//		int hmax = 0;
-//		for(WLCSurface surface : WaylandCraft.instance.bridge.getAllSurfaces()) {
-//			int w = surface.width();
-//			int h = surface.height();
-//			
-//			context.outline(x, y, w, h, ARGB.color(255, 255, 255));
-//			
-//			BufferTexture buffer;
-//			if((buffer = surface.getBuffer()) != null) {
-//				context.blit(buffer.getTextureView(), RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST), x, y, x + w, y + h, 0, 1, 0, 1);
-//			}
-//			
-//			if(h > hmax) hmax = h;
-//			if(x + w > fbWidth) {
-//				y += hmax;
-//				x = 0;
-//				hmax = 0;
-//			}
-//			else {
-//				x += w;
-//			}
-//		}
 		
 		poseStack.popMatrix();
 		

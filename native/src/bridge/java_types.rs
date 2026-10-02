@@ -15,7 +15,6 @@ bind_java_type! {
 
     fields {
         handle: jlong,
-        dirty: jboolean,
         parent: WLCSurface,
         children: WLCSurface[],
         surface_draw_tree: WLCSurface[],
@@ -54,6 +53,7 @@ bind_java_type! {
         pub fn add_buffer_damage(x: jint, y: jint, width: jint, height: jint),
         pub fn add_surface_damage(x: jint, y: jint, width: jint, height: jint),
         pub fn calculate_subpos(),
+        pub fn commit(),
     },
 
     native_methods {

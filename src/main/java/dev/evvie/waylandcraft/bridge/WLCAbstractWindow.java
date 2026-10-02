@@ -1,7 +1,5 @@
 package dev.evvie.waylandcraft.bridge;
 
-import org.jetbrains.annotations.Nullable;
-
 import dev.evvie.waylandcraft.render.WindowFramebuffer;
 
 public abstract class WLCAbstractWindow {
@@ -9,15 +7,11 @@ public abstract class WLCAbstractWindow {
 	// Set to zero when this window no longer exists
 	private long handle;
 	
-	@Nullable
 	protected WLCSurface surface;
 	
 	protected boolean wasMapped = false;
 	
 	public SurfaceGeometry geometry;
-	
-	@Nullable
-	public WindowFramebuffer framebuffer = null;
 	
 	public WLCAbstractWindow(long handle) {
 		this.handle = handle;
@@ -39,6 +33,10 @@ public abstract class WLCAbstractWindow {
 	
 	public WLCSurface getRootSurface() {
 		return this.surface;
+	}
+	
+	public WindowFramebuffer getFramebuffer() {
+		return surface.getFramebuffer();
 	}
 	
 	public boolean isMapped() {

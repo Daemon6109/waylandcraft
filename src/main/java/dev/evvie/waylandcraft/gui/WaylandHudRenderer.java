@@ -98,7 +98,7 @@ public class WaylandHudRenderer {
 		
 		if(wlc.pinnedToplevel != null && !wlc.pinnedToplevel.isAlive()) wlc.pinnedToplevel = null;
 		if(wlc.pinnedToplevel != null) {
-			WindowFramebuffer buf = wlc.pinnedToplevel.framebuffer;
+			WindowFramebuffer buf = wlc.pinnedToplevel.getFramebuffer();
 			if(buf == null) return;
 			
 			SurfaceGeometry geometry = wlc.pinnedToplevel.geometry;

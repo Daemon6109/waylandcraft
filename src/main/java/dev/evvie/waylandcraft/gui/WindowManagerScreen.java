@@ -317,7 +317,7 @@ public class WindowManagerScreen extends Screen {
 			prepareToplevel(renderToplevel);
 			
 			for(WindowElement element : windows) {
-				WindowFramebuffer buf = element.window.framebuffer;
+				WindowFramebuffer buf = element.window.getFramebuffer();
 				if(buf == null) continue;
 				
 				int x = (int) element.x - buf.getXOff();

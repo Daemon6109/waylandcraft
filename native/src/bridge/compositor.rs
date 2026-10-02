@@ -195,11 +195,6 @@ fn _surface_commit<'local>(
 
     if is_sync_subsurface(surface) { return Ok(()) }
 
-    jsurface.set_dirty(env, true)?;
-
-    let parent = get_parent(surface);
-    let is_root_surface = parent.is_none();
-
     // Update surface data from this subsurface tree
     with_surface_tree_upward(
         surface,
@@ -209,6 +204,7 @@ fn _surface_commit<'local>(
             let jsurface = &data.data_map.get::<MySurface>().unwrap().0;
             update_surface_data(env, state, surface, data, jsurface)
                 .expect("update_surface_data");
+            jsurface.commit(env).unwrap();
         },
         |_, _, _| true
     );

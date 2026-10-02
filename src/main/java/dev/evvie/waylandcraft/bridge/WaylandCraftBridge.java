@@ -172,6 +172,8 @@ public class WaylandCraftBridge {
 		// Flush outgoing display buffers
 		flushDisplay(instance);
 		
+		WindowFramebuffer.endFrame();
+		
 		profiler.pop();
 	}
 	
@@ -181,6 +183,7 @@ public class WaylandCraftBridge {
 	
 	protected void deleteSurface(WLCSurface surface) {
 		surfaces.remove(surface);
+		surface.destroy();
 	}
 	
 	public WLCSurface[] getAllSurfaces() {

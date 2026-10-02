@@ -7,12 +7,12 @@ import org.jetbrains.annotations.Nullable;
 
 import dev.evvie.waylandcraft.render.BufferTexture;
 import dev.evvie.waylandcraft.render.BufferTexture.DmabufTexture;
+import dev.evvie.waylandcraft.render.WindowFramebuffer;
 import net.minecraft.util.Mth;
 
 public class WLCSurface {
 	
 	protected long handle = 0;
-	protected boolean dirty = false;
 	
 	@Nullable
 	private BufferTexture buffer = null;
@@ -22,13 +22,15 @@ public class WLCSurface {
 	
 	protected WLCSurface[] children = new WLCSurface[0];
 	
-	// Entire surface tree in drawing order (back to front). Contains the surface itself. This field is non-null exactly when this surface is a root surface.
+	// Entire surface tree in drawing order (back to front). Contains the surface itself.
+	// Only updated for root surfaces
 	@Nullable
-	protected WLCSurface[] surfaceDrawTree = null;
+	protected WLCSurface[] surfaceDrawTree = new WLCSurface[] {this};
 	
-	// Entire surface tree in input order (front to back). Contains the surface itself. This field is non-null exactly when this surface is a root surface.
+	// Entire surface tree in input order (front to back). Contains the surface itself.
+	// Only updated for root surfaces
 	@Nullable
-	protected WLCSurface[] surfaceInputTree = null;
+	protected WLCSurface[] surfaceInputTree = new WLCSurface[] {this};
 	
 	// Surface size. By default the size of the attached buffer.
 	private int width = 0;
@@ -48,8 +50,12 @@ public class WLCSurface {
 	private ArrayList<SurfaceDamage> surfaceDamage = new ArrayList<>();
 	private ArrayList<BufferDamage> bufferDamage = new ArrayList<>();
 	
+	@Nullable
+	private WindowFramebuffer framebuffer = null;
+	
 	private WLCSurface(long handle) {
 		this.handle = handle;
+		System.out.println("new surface: " + this);
 	}
 	
 	public boolean isAlive() {
@@ -58,6 +64,19 @@ public class WLCSurface {
 	
 	protected void destroy() {
 		if(buffer != null) buffer.release();
+		if(framebuffer != null) framebuffer.destroy();
+		System.out.println("destroy: " + this);
+	}
+	
+	protected void commit() {
+		System.out.println("Commit " + this);
+		if(parent != null) return;
+		if(framebuffer == null) framebuffer = new WindowFramebuffer(this);
+		framebuffer.render();
+	}
+	
+	public WindowFramebuffer getFramebuffer() {
+		return framebuffer;
 	}
 	
 	// Attach a shared memory buffer
