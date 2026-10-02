@@ -179,6 +179,20 @@ public class WLCSurface {
 		this.surfaceDamage.add(new SurfaceDamage(Mth.floor(sx), Mth.floor(sy), Mth.ceil(sw), Mth.ceil(sh)));
 	}
 	
+	protected void calculateSubpos() {
+		if(parent == null) {
+			this.xSubpos = 0;
+			this.ySubpos = 0;
+		}
+		else {
+			this.xSubpos = parent.xSubpos + this.xoff;
+			this.ySubpos = parent.ySubpos + this.yoff;
+		}
+		for(WLCSurface child : children) {
+			child.calculateSubpos();
+		}
+	}
+	
 	public List<SurfaceDamage> getSurfaceDamage() {
 		return surfaceDamage;
 	}

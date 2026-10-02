@@ -172,19 +172,35 @@ fn _surface_commit<'local>(
     state: &mut WLCState,
     surface: &WlSurface,
 ) -> Result<(), BridgeError> {
+    let jsurface = get_java_surface!(surface);
+
+    // Update children
+    let children = get_children(surface);
+    let jchildren = get_java_surfaces(env, &children)?;
+    jsurface.set_children(env, jchildren)?;
+
+    // Find root surface of this surface tree
+    let mut root = surface.clone();
+    loop {
+        match get_parent(&root) {
+            Some(r) => root = r,
+            None => break,
+        }
+    }
+
+    // Update root surface tree
+    let jroot = get_java_surface!(&root);
+    update_trees(env, &root, jroot)?;
+    jroot.calculate_subpos(env)?;
+
     if is_sync_subsurface(surface) { return Ok(()) }
 
-    let jsurface = get_java_surface!(surface);
     jsurface.set_dirty(env, true)?;
 
     let parent = get_parent(surface);
     let is_root_surface = parent.is_none();
 
-    let children = get_children(surface);
-    let jchildren = get_java_surfaces(env, &children)?;
-    jsurface.set_children(env, jchildren)?;
-
-    let mut tree_upward: Vec<WlSurface> = vec![];
+    // Update surface data from this subsurface tree
     with_surface_tree_upward(
         surface,
         (),
@@ -193,29 +209,43 @@ fn _surface_commit<'local>(
             let jsurface = &data.data_map.get::<MySurface>().unwrap().0;
             update_surface_data(env, state, surface, data, jsurface)
                 .expect("update_surface_data");
-
-            tree_upward.push(surface.clone());
         },
         |_, _, _| true
     );
 
-    if is_root_surface {
-        let jtree_upward = get_java_surfaces(env, &tree_upward)?;
-        jsurface.set_surface_draw_tree(env, jtree_upward)?;
+    Ok(())
+}
 
-        let mut tree_downward: Vec<WlSurface> = vec![];
-        with_surface_tree_downward(
-            surface,
-            (),
-            |_, _, _| TraversalAction::DoChildren(()),
-            |surface, data, _| {
-                tree_downward.push(surface.clone());
-            },
-            |_, _, _| true
-        );
-        let jtree_downward = get_java_surfaces(env, &tree_downward)?;
-        jsurface.set_surface_input_tree(env, jtree_downward)?;
-    }
+fn update_trees<'local>(
+    env: &mut Env<'local>,
+    root: &WlSurface,
+    jroot: &WLCSurface<'local>,
+) -> Result<(), BridgeError> {
+    let mut tree_upward: Vec<WlSurface> = vec![];
+    with_surface_tree_upward(
+        root,
+        (),
+        |_, _, _| TraversalAction::DoChildren(()),
+        |s, _, _| {
+            tree_upward.push(s.clone());
+        },
+        |_, _, _| true
+    );
+    let jtree_upward = get_java_surfaces(env, &tree_upward)?;
+    jroot.set_surface_draw_tree(env, jtree_upward)?;
+
+    let mut tree_downward: Vec<WlSurface> = vec![];
+    with_surface_tree_downward(
+        root,
+        (),
+        |_, _, _| TraversalAction::DoChildren(()),
+        |s, _, _| {
+            tree_downward.push(s.clone());
+        },
+        |_, _, _| true
+    );
+    let jtree_downward = get_java_surfaces(env, &tree_downward)?;
+    jroot.set_surface_input_tree(env, jtree_downward)?;
 
     Ok(())
 }
@@ -236,8 +266,8 @@ fn update_surface_data<'local>(
         (0, 0)
     };
 
-    jsurface.set_xoff(env, sx).unwrap();
-    jsurface.set_yoff(env, sy).unwrap();
+    jsurface.set_xoff(env, sx)?;
+    jsurface.set_yoff(env, sy)?;
 
     let mut attr_guard = data.cached_state.get::<SurfaceAttributes>();
     let attr = attr_guard.deref_mut().current();

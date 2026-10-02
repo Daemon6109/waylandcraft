@@ -26,7 +26,7 @@ public class TestScreen extends Screen {
 	}
 	
 	@Override
-	public void extractRenderState(GuiGraphicsExtractor context, int i, int j, float f) {
+	public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float partialTicks) {
 		super.extractBlurredBackground(context);
 		
 		float guiScale = (float) Minecraft.getInstance().getWindow().getGuiScale();
@@ -36,36 +36,60 @@ public class TestScreen extends Screen {
 		
 		context.fill(0, 0, 0, 0, 0); // force blurred background to render
 		
-		int fbWidth = Minecraft.getInstance().getWindow().getWidth();
-		int x = 0;
-		int y = 0;
-		int hmax = 0;
-		for(WLCSurface surface : WaylandCraft.instance.bridge.getAllSurfaces()) {
-			int w = surface.width();
-			int h = surface.height();
-			
-			context.outline(x, y, w, h, ARGB.color(255, 255, 255));
-			
-			BufferTexture buffer;
-			if((buffer = surface.getBuffer()) != null) {
-				context.blit(buffer.getTextureView(), RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST), x, y, x + w, y + h, 0, 1, 0, 1);
-			}
-			
-			if(h > hmax) hmax = h;
-			if(x + w > fbWidth) {
-				y += hmax;
-				x = 0;
-				hmax = 0;
-			}
-			else {
-				x += w;
+		WLCSurface root = null;
+		WLCSurface[] surfaces = WaylandCraft.instance.bridge.getAllSurfaces();
+		for(WLCSurface surface : surfaces) {
+			if(surface.getParent() == null) {
+				root = surface;
 			}
 		}
-//		context.blit(textureView, sampler, x, y, x + w, y + h, 0, 1, 0, 1);
+		
+		WLCSurface[] tree;
+		if(root != null && (tree = root.getDrawTree()) != null) {
+			for(WLCSurface surface : tree) {
+				int x = 10 + surface.xSubpos;
+				int y = 10 + surface.ySubpos;
+				int w = surface.width();
+				int h = surface.height();
+				
+				context.outline(x, y, w, h, ARGB.color(255, 255, 255));
+				
+				BufferTexture buffer;
+				if((buffer = surface.getBuffer()) != null) {
+					context.blit(buffer.getTextureView(), RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST), x, y, x + w, y + h, 0, 1, 0, 1);
+				}
+			}
+		}
+		
+//		int fbWidth = Minecraft.getInstance().getWindow().getWidth();
+//		int x = 0;
+//		int y = 0;
+//		int hmax = 0;
+//		for(WLCSurface surface : WaylandCraft.instance.bridge.getAllSurfaces()) {
+//			int w = surface.width();
+//			int h = surface.height();
+//			
+//			context.outline(x, y, w, h, ARGB.color(255, 255, 255));
+//			
+//			BufferTexture buffer;
+//			if((buffer = surface.getBuffer()) != null) {
+//				context.blit(buffer.getTextureView(), RenderSystem.getSamplerCache().getRepeat(FilterMode.NEAREST), x, y, x + w, y + h, 0, 1, 0, 1);
+//			}
+//			
+//			if(h > hmax) hmax = h;
+//			if(x + w > fbWidth) {
+//				y += hmax;
+//				x = 0;
+//				hmax = 0;
+//			}
+//			else {
+//				x += w;
+//			}
+//		}
 		
 		poseStack.popMatrix();
 		
-		super.extractRenderState(context, i, j, f);
+		super.extractRenderState(context, mouseX, mouseY, partialTicks);
 	}
 	
 	@Override
