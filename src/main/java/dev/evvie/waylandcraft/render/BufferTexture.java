@@ -1,10 +1,12 @@
 package dev.evvie.waylandcraft.render;
 
+import java.nio.ByteBuffer;
 import java.util.OptionalInt;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL33;
 import org.lwjgl.system.JNI;
+import org.lwjgl.system.MemoryStack;
 
 import com.mojang.blaze3d.opengl.GlDevice;
 import com.mojang.blaze3d.opengl.GlStateManager;
@@ -15,6 +17,7 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.DestFactor;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.SourceFactor;
 import com.mojang.blaze3d.systems.GpuDeviceBackend;
 import com.mojang.blaze3d.systems.RenderPass;
@@ -82,16 +85,13 @@ public abstract class BufferTexture {
 		private SinglePixelBufferTexture(byte r, byte g, byte b, byte a) {
 			super(1, 1, FORMAT_ARGB8888);
 			
-			texture = RenderSystem.getDevice().createTexture("buffertexture-" + this.hashCode(), GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING | GpuTexture.USAGE_RENDER_ATTACHMENT, TextureFormat.RGBA8, 1, 1, 1, 1);
+			texture = RenderSystem.getDevice().createTexture("buffertexture-" + this.hashCode(), GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING, TextureFormat.RGBA8, 1, 1, 1, 1);
 			textureView = RenderSystem.getDevice().createTextureView(texture);
 			
-			int c1 = Byte.toUnsignedInt(r);
-			int c2 = Byte.toUnsignedInt(g);
-			int c3 = Byte.toUnsignedInt(b);
-			int c4 = Byte.toUnsignedInt(a);
-			int color = c4 << 24 | c1 << 16 | c2 << 8 | c3;
-			
-			RenderSystem.getDevice().createCommandEncoder().clearColorTexture(texture, color);
+			try(MemoryStack stack = MemoryStack.stackPush()) {
+				ByteBuffer data = stack.bytes(r, g, b, a);
+				RenderSystem.getDevice().createCommandEncoder().writeToTexture(texture, data, NativeImage.Format.RGBA, 0, 0, 0, 0, 1, 1);
+			}
 		}
 		
 		@Override
@@ -108,43 +108,24 @@ public abstract class BufferTexture {
 		
 	}
 	
-	private static abstract class GlBasicBufferTexture extends BufferTexture {
+	private static class GlShmBufferTexture extends BufferTexture {
 		
 		public final int id;
 		private GlTexture texture;
 		private GpuTextureView textureView;
-		
-		private GlBasicBufferTexture(int width, int height, int format) {
-			super(width, height, format);
-			this.id = GlStateManager._genTexture();
-			
-			texture = IGlTextureMixin.createTexture(GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING, "buffertexture-" + this.hashCode(), TextureFormat.RGBA8, width, height, 1, 1, id);
-			textureView = RenderSystem.getDevice().createTextureView(texture);
-		}
-		
-		@Override
-		public GpuTextureView getTextureView() {
-			return textureView;
-		}
-		
-		@Override
-		public void release() {
-			textureView.close();
-			texture.close();
-			textureView = null;
-		}
-		
-	}
-	
-	private static class GlShmBufferTexture extends GlBasicBufferTexture {
 		
 		private final long ptr;
 		private final int stride;
 		
 		private GlShmBufferTexture(long ptr, int width, int height, int format, int stride) {
 			super(width, height, format);
+			
+			this.id = GlStateManager._genTexture();
 			this.ptr = ptr;
 			this.stride = stride;
+			
+			texture = IGlTextureMixin.createTexture(GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING, "buffertexture-" + this.hashCode(), TextureFormat.RGBA8, width, height, 1, 1, id);
+			textureView = RenderSystem.getDevice().createTextureView(texture);
 			
 			init();
 		}
@@ -164,6 +145,18 @@ public abstract class BufferTexture {
 			GlStateManager._pixelStore(GL33.GL_UNPACK_ALIGNMENT, 4);
 			
 			GL33.nglTexImage2D(GL33.GL_TEXTURE_2D, 0, GL33.GL_RGBA8, width, height, 0, GL33.GL_BGRA, GL33.GL_UNSIGNED_INT_8_8_8_8_REV, this.ptr);
+		}
+		
+		@Override
+		public GpuTextureView getTextureView() {
+			return textureView;
+		}
+		
+		@Override
+		public void release() {
+			textureView.close();
+			texture.close();
+			textureView = null;
 		}
 		
 	}
