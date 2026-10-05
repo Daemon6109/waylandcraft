@@ -17,7 +17,10 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import dev.evvie.waylandcraft.WaylandCraftCommon;
 import dev.evvie.waylandcraft.bridge.dmabuf.DmabufFeedbackData;
+import dev.evvie.waylandcraft.bridge.dmabuf.DmabufFormat;
 import dev.evvie.waylandcraft.desktop.RawDesktopEntry;
+import dev.evvie.waylandcraft.egl.EGL;
+import dev.evvie.waylandcraft.egl.EGLHelper;
 import dev.evvie.waylandcraft.render.BufferTexture.DmabufTexture;
 import dev.evvie.waylandcraft.render.WindowFramebuffer;
 import dev.evvie.waylandcraft.utils.CursorShape;
@@ -110,9 +113,8 @@ public class WaylandCraftBridge {
 	}
 	
 	public static WaylandCraftBridge start() {
-//		DmabufFeedbackData dmabufFeedbackData = initBackend();
-		
-		WaylandCraftBridge bridge = init();
+		DmabufFeedbackData dmabufFeedbackData = initBackend();
+		WaylandCraftBridge bridge = init(dmabufFeedbackData);
 		
 		// Add shutdown thread to clean up resources on normal exit
 		Runtime.getRuntime().addShutdownHook(new Thread(bridge::shutdownHook));
@@ -123,30 +125,30 @@ public class WaylandCraftBridge {
 	private static DmabufFeedbackData initBackend() {
 		GpuDeviceBackend deviceBackend = RenderSystem.getDevice().backend;
 		if(deviceBackend instanceof GlDevice) {
-//			return initBackendEGL();
+			return initBackendEGL();
 		}
 		
 		WaylandCraftCommon.LOGGER.error("Unsupported graphics backend!");
 		return null;
 	}
 	
-//	private static DmabufFeedbackData initBackendEGL() {
-//		long eglDisplay = EGL.getEGLDisplay();
-//		if(eglDisplay == 0) {
-//			throw new RuntimeException("Failed to get EGL display!");
-//		}
-//		
-//		String renderNodePath = EGLHelper.queryRenderNodePath(eglDisplay);
-//		if(renderNodePath == null) {
-//			WaylandCraftCommon.LOGGER.error("Failed to query for drm render node! This could indicate a software renderer. Disabling dmabuf functionality.");
-//			return null;
-//		}
-//		
-//		DmabufFormat[] formats = EGLHelper.queryDmabufFormats(eglDisplay).toArray(DmabufFormat[]::new);
-//		long device = drmDeviceByPath(renderNodePath);
-//		
-//		return new DmabufFeedbackData(device, formats);
-//	}
+	private static DmabufFeedbackData initBackendEGL() {
+		long eglDisplay = EGL.getEGLDisplay();
+		if(eglDisplay == 0) {
+			throw new RuntimeException("Failed to get EGL display!");
+		}
+		
+		String renderNodePath = EGLHelper.queryRenderNodePath(eglDisplay);
+		if(renderNodePath == null) {
+			WaylandCraftCommon.LOGGER.error("Failed to query for drm render node! This could indicate a software renderer. Disabling dmabuf functionality.");
+			return null;
+		}
+		
+		DmabufFormat[] formats = EGLHelper.queryDmabufFormats(eglDisplay).toArray(DmabufFormat[]::new);
+		long device = drmDeviceByPath(renderNodePath);
+		
+		return new DmabufFeedbackData(device, formats);
+	}
 	
 	private void shutdownHook() {
 		shutdown(instance);
@@ -791,11 +793,14 @@ public class WaylandCraftBridge {
 	
 	public static record ResizeRequest(int serial, int edges) {}
 	
-	private static native WaylandCraftBridge init();
+	private static native WaylandCraftBridge init(@Nullable DmabufFeedbackData dmabufFeedbackData);
 	private static native void shutdown(long instance);
 	private static native void dispatchClients(long instance);
 	private static native void flushDisplay(long instance);
 	private static native String socket(long instance);
+	
+	private static native long drmDeviceByPath(String path);
+	private static native long drmDeviceByMajorMinor(int major, int minor);
 	
 	/*
 	private static native long init(@Nullable DmabufFeedbackData dmabufFeedbackData);

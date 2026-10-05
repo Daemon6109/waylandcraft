@@ -9,6 +9,11 @@ bind_java_type! {
     rust_type = pub WLCSurface,
     java_type = dev.evvie.waylandcraft.bridge.WLCSurface,
 
+    type_map {
+        JDmabufTexture =>
+            "dev.evvie.waylandcraft.render.BufferTexture$DmabufTexture",
+    },
+
     constructors {
         fn new(handle: jlong),
     },
@@ -48,7 +53,9 @@ bind_java_type! {
             blue: jbyte,
             alpha: jbyte
         ),
-        pub fn attach_dmabuf(handle: jlong) -> jboolean,
+        pub fn attach_dmabuf(
+            buf: JDmabufTexture,
+        ),
         pub fn clear_damage(),
         pub fn add_buffer_damage(x: jint, y: jint, width: jint, height: jint),
         pub fn add_surface_damage(x: jint, y: jint, width: jint, height: jint),
@@ -61,6 +68,30 @@ bind_java_type! {
             sig = (),
             fn = bridge::compositor::send_frame,
         },
+    },
+}
+
+bind_java_type! {
+    rust_type = pub JDmabufTexture,
+    java_type = "dev.evvie.waylandcraft.render.BufferTexture$DmabufTexture",
+
+    methods = {
+        pub fn free_internal(),
+    },
+}
+
+bind_java_type! {
+    rust_type = pub JBufferTexture,
+    java_type = dev.evvie.waylandcraft.render.BufferTexture,
+
+    type_map {
+        JDmabufTexture =>
+            "dev.evvie.waylandcraft.render.BufferTexture$DmabufTexture",
+        JDmabuf => dev.evvie.waylandcraft.bridge.dmabuf.Dmabuf,
+    },
+
+    methods = {
+        pub static fn create_dmabuf_texture(buf: JDmabuf) -> JDmabufTexture,
     },
 }
 
@@ -100,7 +131,6 @@ bind_java_type! {
 
     constructors {
         fn new(
-            handle: jlong,
             width: jint,
             height: jint,
             format: jint,
@@ -172,7 +202,9 @@ bind_java_type! {
 
     native_methods {
         static extern fn init {
-            sig = () -> WaylandCraftBridge,
+            sig = (
+                dmabuf_feedback: JDmabufFeedbackData,
+            ) -> WaylandCraftBridge,
             fn = bridge::init,
         },
         static extern fn shutdown {
@@ -191,6 +223,14 @@ bind_java_type! {
             sig = (instance: jlong) -> JString,
             fn = bridge::socket,
         },
+        static extern fn drm_device_by_path {
+            sig = (path: JString) -> jlong,
+            fn = bridge::drm::drm_device_by_path,
+        },
+        static extern fn drm_device_by_major_minor {
+            sig = (major: jint, minor: jint) -> jlong,
+            fn = bridge::drm::drm_device_by_major_minor,
+        },
     },
 }
 
@@ -200,6 +240,8 @@ pub enum BridgeError {
     JniError(#[from] jni::errors::Error),
     #[error(transparent)]
     Init(Box<dyn std::error::Error>),
+    #[error(transparent)]
+    DrmNodeError(#[from] CreateDrmNodeError),
     #[error("Received null instance handle")]
     NullInstancePtr,
     #[error("Error converting OS string to UTF-8")]

@@ -63,13 +63,12 @@ public class WLCSurface {
 	}
 	
 	protected void destroy() {
-		if(buffer != null) buffer.release();
+		removeBuffer();
 		if(framebuffer != null) framebuffer.destroy();
 		System.out.println("destroy: " + this);
 	}
 	
 	protected void commit() {
-		System.out.println("Commit " + this);
 		if(parent != null) return;
 		if(framebuffer == null) framebuffer = new WindowFramebuffer(this);
 		framebuffer.render();
@@ -99,27 +98,26 @@ public class WLCSurface {
 		this.height = 1;
 	}
 	
-	// Attach an already known dmabuf
+	// Attach a dmabuf
 	// The surface width and height are reset to the given buffer dimensions.
-	// Returns false if no DmabufTexture by that handle was found.
-	protected boolean attachDmabuf(long handle) {
+	protected void attachDmabuf(DmabufTexture dmabuf) {
 		removeBuffer();
-		
-//		DmabufTexture dmabuf = WaylandCraft.instance.bridge.getDmabuf(handle);
-		DmabufTexture dmabuf = null;
-		if(dmabuf == null) return false;
 		
 		this.buffer = dmabuf;
 		this.width = buffer.width;
 		this.height = buffer.height;
 		
 		dmabuf.copyData();
-		return true;
 	}
 	
 	protected void removeBuffer() {
-		if(buffer != null) buffer.release();
+		BufferTexture prev = buffer;
 		this.buffer = null;
+		if(prev != null) {
+			// Make sure this.buffer is nulled first before release because DmabufTexture#release searches
+			// for surfaces that have it attached
+			prev.release();
+		}
 		this.width = this.height = 0;
 	}
 	

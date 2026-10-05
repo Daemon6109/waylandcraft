@@ -1,7 +1,7 @@
 use crate::{
     WLCState,
     bridge::{
-        BridgeError,
+        self, BridgeError,
         java_types::*,
         utils::with_env,
     },
@@ -13,6 +13,7 @@ use jni::{
     sys::{jbyte, jint, jlong},
 };
 use smithay::{
+    backend::allocator::Buffer,
     reexports::wayland_server::{
         Resource, Weak,
         protocol::wl_buffer::WlBuffer,
@@ -29,6 +30,7 @@ use smithay::{
         single_pixel_buffer::get_single_pixel_buffer,
         shm::{self, with_buffer_contents},
         viewporter::{ensure_viewport_valid, ViewportCachedState},
+        dmabuf::get_dmabuf,
     },
 };
 use std::sync::Arc;
@@ -368,6 +370,29 @@ fn try_attach_single_pixel(
     BufferAttachResult::Success
 }
 
+fn try_attach_dmabuf(
+    state: &mut WLCState,
+    env: &mut Env,
+    jsurface: &WLCSurface,
+    buf: &WlBuffer,
+    surf_data: &SurfaceData,
+) -> BufferAttachResult {
+    let dmabuf = match get_dmabuf(buf) {
+        Ok(d) => d,
+        Err(_) => return BufferAttachResult::NotManaged,
+    };
+
+    let width = dmabuf.width() as jint;
+    let height = dmabuf.height() as jint;
+    ensure_viewport_valid(surf_data, Size::new(width, height));
+
+    let tex = bridge::dmabuf::get_dmabuf_java(env, state, dmabuf)
+        .expect("get_dmabuf_java");
+    jsurface.attach_dmabuf(env, tex).unwrap();
+
+    BufferAttachResult::Success
+}
+
 // Proxy to call the try_attach_* family of functions
 fn try_attach_buffer(
     state: &mut WLCState,
@@ -376,16 +401,8 @@ fn try_attach_buffer(
     buf: &WlBuffer,
     surf_data: &SurfaceData,
 ) -> BufferAttachResult {
-    type TryAttachFn = fn(
-        state: &mut WLCState,
-        env: &mut Env,
-        jsurface: &WLCSurface,
-        buf: &WlBuffer,
-        surf_data: &SurfaceData,
-    ) -> BufferAttachResult;
-
     let funcs =
-        [try_attach_shm, try_attach_single_pixel];
+        [try_attach_shm, try_attach_single_pixel, try_attach_dmabuf];
     for func in funcs {
         let result = func(state, env, jsurface, buf, surf_data);
         match result {

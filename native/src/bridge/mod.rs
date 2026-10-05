@@ -1,7 +1,10 @@
 use crate::{
-    WaylandCraft,
-    bridge::{java_types::*, utils::*},
-    wlc_init,
+    wlc_init, WaylandCraft,
+    bridge::{
+        dmabuf::{dmabuf_feedback_from_java, BridgeDmabuf},
+        java_types::*,
+        utils::*,
+    },
 };
 use jni::{
     Env,
@@ -18,17 +21,23 @@ use std::mem::MaybeUninit;
 use std::time::Duration;
 
 pub mod compositor;
+mod drm;
+pub mod dmabuf;
 mod java_types;
 mod utils;
 
 pub struct BridgeState {
     pub java: Global<WaylandCraftBridge<'static>>,
+    pub dmabufs: Vec<BridgeDmabuf>,
 }
 
 fn init<'local>(
     env: &mut Env<'local>,
     _class: JClass<'local>,
+    dmabuf_feedback: JDmabufFeedbackData<'local>,
 ) -> Result<WaylandCraftBridge<'local>, BridgeError> {
+    let dmabuf_feedback = dmabuf_feedback_from_java(env, dmabuf_feedback)?;
+
     // Create memory that holds the instance
     let mut instance_box: Box<MaybeUninit<WaylandCraft>> = Box::new_uninit();
     let ptr = instance_box.as_mut_ptr().addr() as jlong;
@@ -42,9 +51,11 @@ fn init<'local>(
     // Create bridge state
     let bridge_state = BridgeState {
         java: bridge_ref,
+        dmabufs: vec![],
     };
 
-    let instance = wlc_init(bridge_state, None).map_err(BridgeError::Init)?;
+    let instance = wlc_init(bridge_state, dmabuf_feedback)
+        .map_err(BridgeError::Init)?;
 
     // Write instance to the memory allocated earlier
     // After this any calls accessing the state using jptr_to_instance are O.K.

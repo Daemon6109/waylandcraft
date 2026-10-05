@@ -28,8 +28,8 @@ use smithay::{
             CompositorClientState, CompositorHandler, CompositorState,
         },
         dmabuf::{
-            self, DmabufFeedbackBuilder, DmabufGlobal, DmabufHandler,
-            DmabufState,
+            self, get_dmabuf, DmabufFeedbackBuilder, DmabufGlobal,
+            DmabufHandler, DmabufState,
         },
         shell::xdg::{
             PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler,
@@ -113,11 +113,19 @@ impl WLCState {
         let mut dmabuf_global = MaybeUninit::uninit();
 
         if let Some(feedback) = dmabuf_feedback {
-            dmabuf_global.write(init_dmabuf(
-                &disp,
-                &mut dmabuf_state,
-                feedback,
-            ));
+            let feedback = DmabufFeedbackBuilder::new(
+                feedback.device,
+                feedback.formats,
+            )
+                .build()
+                .unwrap();
+
+            let global = dmabuf_state
+                .create_global_with_default_feedback::<WLCState>(
+                    &disp,
+                    &feedback,
+                );
+            dmabuf_global.write(global);
         }
 
         let seat = WLCSeatState::new();
@@ -147,19 +155,6 @@ impl WLCState {
             bridge: bridge_state,
         }
     }
-}
-
-fn init_dmabuf(
-    disp: &DisplayHandle,
-    state: &mut DmabufState,
-    feedback_data: DmabufFeedbackData,
-) -> DmabufGlobal {
-    let feedback =
-        DmabufFeedbackBuilder::new(feedback_data.device, feedback_data.formats)
-            .build()
-            .unwrap();
-
-    state.create_global_with_default_feedback::<WLCState>(disp, &feedback)
 }
 
 impl CompositorHandler for WLCState {
@@ -192,7 +187,11 @@ impl CompositorHandler for WLCState {
 }
 
 impl BufferHandler for WLCState {
-    fn buffer_destroyed(&mut self, _buffer: &WlBuffer) {}
+    fn buffer_destroyed(&mut self, buffer: &WlBuffer) {
+        if let Ok(dmabuf) = get_dmabuf(buffer) {
+            bridge::dmabuf::free_dmabuf(self, dmabuf);
+        }
+    }
 }
 
 impl ShmHandler for WLCState {
@@ -212,6 +211,22 @@ impl DmabufHandler for WLCState {
         dmabuf: Dmabuf,
         notifier: dmabuf::ImportNotifier,
     ) {
+        let imported = match bridge::dmabuf::import_dmabuf(&dmabuf) {
+            Ok(bridge_dmabuf) => bridge_dmabuf,
+            Err(_) => {
+                notifier.failed();
+                return;
+            },
+        };
+
+        match notifier.successful::<WLCState>() {
+            Ok(_buffer) => (),
+            Err(_) => {
+                return;
+            },
+        }
+
+        self.bridge.dmabufs.push(imported);
     }
 }
 

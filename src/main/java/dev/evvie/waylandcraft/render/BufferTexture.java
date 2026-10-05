@@ -3,6 +3,7 @@ package dev.evvie.waylandcraft.render;
 import java.nio.ByteBuffer;
 import java.util.OptionalInt;
 
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL33;
 import org.lwjgl.system.JNI;
@@ -11,14 +12,9 @@ import org.lwjgl.system.MemoryStack;
 import com.mojang.blaze3d.opengl.GlDevice;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.opengl.GlTexture;
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.ColorTargetState;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
-import com.mojang.blaze3d.platform.DestFactor;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.platform.SourceFactor;
 import com.mojang.blaze3d.systems.GpuDeviceBackend;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -26,16 +22,15 @@ import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.textures.TextureFormat;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
+import dev.evvie.waylandcraft.WaylandCraft;
 import dev.evvie.waylandcraft.WaylandCraftCommon;
+import dev.evvie.waylandcraft.bridge.WLCSurface;
 import dev.evvie.waylandcraft.bridge.dmabuf.Dmabuf;
 import dev.evvie.waylandcraft.egl.EGL;
 import dev.evvie.waylandcraft.egl.EGLHelper;
 import dev.evvie.waylandcraft.mixin.IGlTextureMixin;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.resources.Identifier;
 
 public abstract class BufferTexture {
 	
@@ -68,13 +63,17 @@ public abstract class BufferTexture {
 		return new SinglePixelBufferTexture(r, g, b, a);
 	}
 	
-	public static DmabufTexture createDmabufTexture(Dmabuf dmabuf) throws DmabufImportFailedException {
+	public static @Nullable DmabufTexture createDmabufTexture(Dmabuf dmabuf) {
 		GpuDeviceBackend deviceBackend = RenderSystem.getDevice().backend;
-		if(deviceBackend instanceof GlDevice) {
-			return new GlDmabufTexture(dmabuf);
+		try {
+			if(deviceBackend instanceof GlDevice) {
+				return new GlDmabufTexture(dmabuf);
+			}
+			
+			throw new RuntimeException("Unsupported backed");
+		} catch(DmabufImportFailedException e) {
+			return null;
 		}
-		
-		throw new RuntimeException("Unsupported backed");
 	}
 	
 	private static class SinglePixelBufferTexture extends BufferTexture {
@@ -161,32 +160,29 @@ public abstract class BufferTexture {
 		
 	}
 	
-	public static final RenderPipeline DMABUF_BLIT = RenderPipelines.register(
-		RenderPipeline.builder()
-			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/dmabuf_blit"))
-			.withVertexShader("core/screenquad")
-			.withFragmentShader("core/blit_screen")
-			.withSampler("InSampler")
-			.withColorTargetState(new ColorTargetState(new BlendFunction(SourceFactor.ONE, DestFactor.ONE_MINUS_SRC_ALPHA)))
-			.withVertexFormat(DefaultVertexFormat.EMPTY, VertexFormat.Mode.TRIANGLES)
-			.build()
-	);
-	
 	public static abstract class DmabufTexture extends BufferTexture {
 		
-		public final long handle;
 		protected RenderTarget target;
 		protected GpuTextureView internalView = null;
 		
+		// Subclass constructor must set internalView!
 		private DmabufTexture(Dmabuf buf) throws DmabufImportFailedException {
 			super(buf.width(), buf.height(), BufferTexture.FORMAT_ARGB8888);
-			this.handle = buf.handle();
 			
 			target = new TextureTarget("dmabuf-target-" + this.hashCode(), width, height, false);
 		}
 		
-		// Destroys internal data
-		public abstract void doFree();
+		protected abstract void doFree();
+		
+		// Destroys internal data when backing native dmabuf is gone
+		public void freeInternal() {
+			if(internalView == null) throw new IllegalStateException("freeInternal() called on non-backed DmabufTexture");
+			
+			doFree();
+			internalView = null;
+			
+			checkTextureDestroy();
+		}
 		
 		@Override
 		public GpuTextureView getTextureView() {
@@ -195,24 +191,52 @@ public abstract class BufferTexture {
 		}
 		
 		public void copyData() {
-			if(internalView == null) return;
+			if(internalView == null) throw new IllegalStateException("copyData() called on non-backed DmabufTexture");
 			
 			try (RenderPass renderPass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Dmabuf blit", target.getColorTextureView(), OptionalInt.of(0x00000000))) {
-				renderPass.setPipeline(DMABUF_BLIT);
+				renderPass.setPipeline(RenderPipelines.TRACY_BLIT);
 				RenderSystem.bindDefaultUniforms(renderPass);
 				renderPass.bindTexture("InSampler", internalView, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
 				renderPass.draw(0, 3);
 			}
 		}
 		
-		public void doReleaseTexure() {
-			target.destroyBuffers();
-			target = null;
+		// Returns true when this object is no longer backed by a dmabuf
+		// The textures are still readable and valid until destroyTexture() is called
+		public boolean isGone() {
+			return internalView == null;
 		}
 		
 		@Override
 		public void release() {
-			// Don't release texture id as dmabuf textures might get reused
+			checkTextureDestroy();
+		}
+		
+		// Checks if the renderable textures should be destroyed
+		private void checkTextureDestroy() {
+			if(target == null) {
+				// already destroyed
+				return;
+			}
+			
+			// There are two things that need to be true to destroy the textures:
+			// 1. The dmabuf has to be gone from native code
+			// 2. This texture is no longer attached to any surfaces
+			
+			if(!isGone()) {
+				// dmabuf still present in native code, don't destroy
+				return;
+			}
+			
+			for(WLCSurface surface : WaylandCraft.instance.bridge.getAllSurfaces()) {
+				if(surface.getBuffer() == this) {
+					// still attached, don't destroy textures
+					return;
+				}
+			}
+			
+			target.destroyBuffers();
+			target = null;
 		}
 		
 	}
@@ -259,13 +283,10 @@ public abstract class BufferTexture {
 		
 		@Override
 		public void doFree() {
-			if(internalView == null) return;
-			
 			long dpy = EGL.getEGLDisplay();
 			EGL.eglDestroyImage(dpy, eglImage);
 			
 			GlStateManager._deleteTexture(eglImageTex);
-			internalView = null;
 		}
 		
 	}
