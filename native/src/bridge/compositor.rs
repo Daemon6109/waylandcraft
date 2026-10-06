@@ -3,6 +3,7 @@ use crate::{
     bridge::{
         self, BridgeError,
         java_types::*,
+        shell::{toplevel_for_surface, toplevel_commit},
         utils::with_env,
     },
     utils::get_time,
@@ -43,7 +44,8 @@ pub fn surface_user_data(
     surface: &WlSurface
 ) -> MySurface {
     with_states(surface, |data| {
-        data.data_map
+        data
+            .data_map
             .get::<MySurface>()
             .unwrap()
             .clone()
@@ -54,20 +56,22 @@ pub fn surface_user_data(
 #[macro_export]
 macro_rules! get_java_surface {
     ($surface:expr) => {
-        (&surface_user_data($surface).0)
+        (&$crate::bridge::compositor::surface_user_data($surface).0)
     };
 }
+pub use get_java_surface;
 
 // Turns Option<WlSurface> into (non-)null &WLCSurface
 #[macro_export]
 macro_rules! get_java_surface_opt {
     ($surface:expr) => {
         match $surface {
-            Some(s) => get_java_surface!(&s),
-            None => &WLCSurface::null(),
+            Some(s) => $crate::get_java_surface!(&s),
+            None => &$crate::bridge::java_types::WLCSurface::null(),
         }
     };
 }
+pub use get_java_surface_opt;
 
 pub fn get_java_surfaces<'local>(
     env: &mut Env<'local>,
@@ -210,6 +214,11 @@ fn _surface_commit<'local>(
         },
         |_, _, _| true
     );
+
+    // If this surface is a toplevel, update its state
+    if let Some(toplevel) = toplevel_for_surface(state, surface) {
+        toplevel_commit(env, state, &toplevel)?;
+    }
 
     Ok(())
 }
@@ -416,7 +425,7 @@ fn try_attach_buffer(
 
 pub fn surface_from_java_nullable<'local>(
     env: &mut Env<'local>,
-    jsurface: WLCSurface<'local>,
+    jsurface: &WLCSurface<'local>,
 ) -> Result<Option<WlSurface>, BridgeError> {
     if jsurface.is_null() {
         return Ok(None);
@@ -435,7 +444,7 @@ pub fn surface_from_java_nullable<'local>(
 
 pub fn surface_from_java<'local>(
     env: &mut Env<'local>,
-    jsurface: WLCSurface<'local>,
+    jsurface: &WLCSurface<'local>,
 ) -> Result<WlSurface, BridgeError> {
     surface_from_java_nullable(env, jsurface)?.ok_or(BridgeError::SurfaceNull)
 }
@@ -444,7 +453,7 @@ pub fn send_frame<'local>(
     env: &mut Env<'local>,
     jsurface: WLCSurface<'local>,
 ) -> Result<(), BridgeError> {
-    let surface = surface_from_java(env, jsurface)?;
+    let surface = surface_from_java(env, &jsurface)?;
 
     with_states(&surface, |data| {
         let mut attr_guard = data.cached_state.get::<SurfaceAttributes>();

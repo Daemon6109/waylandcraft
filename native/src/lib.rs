@@ -72,23 +72,11 @@ pub struct WLCState {
     pub single_pixel_buffer_state: SinglePixelBufferState,
     pub dmabuf_state: DmabufState,
     pub dmabuf_global: MaybeUninit<DmabufGlobal>,
-    pub requests: WindowRequests,
     pub seat: WLCSeatState,
     pub data: WLCDataState,
     pub output: WLCOutput,
     pub satellite: Option<SatelliteState>,
     pub bridge: BridgeState,
-}
-
-#[derive(Default)]
-pub struct WindowRequests {
-    pub minimize: Vec<ToplevelSurface>,
-    pub maximize: Vec<ToplevelSurface>,
-    pub unmaximize: Vec<ToplevelSurface>,
-    pub fullscreen: Vec<ToplevelSurface>,
-    pub unfullscreen: Vec<ToplevelSurface>,
-    pub move_interactive: Vec<Serial>,
-    pub resize_interactive: Vec<(Serial, ResizeEdge)>,
 }
 
 pub struct DmabufFeedbackData {
@@ -147,7 +135,6 @@ impl WLCState {
             single_pixel_buffer_state,
             dmabuf_state,
             dmabuf_global,
-            requests: WindowRequests::default(),
             seat,
             data,
             output,
@@ -237,6 +224,11 @@ impl XdgShellHandler for WLCState {
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         surface.send_configure();
+        bridge::shell::new_toplevel(self, &surface);
+    }
+
+    fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
+        bridge::shell::toplevel_destroyed(self, &surface);
     }
 
     fn new_popup(
@@ -249,6 +241,10 @@ impl XdgShellHandler for WLCState {
             state.positioner = positioner;
         });
         surface.send_configure().expect("popup initial configure");
+    }
+
+    fn popup_destroyed(&mut self, surface: PopupSurface) {
+        bridge::shell::popup_destroyed(self, &surface);
     }
 
     fn grab(&mut self, _surface: PopupSurface, _seat: WlSeat, _serial: Serial) {
@@ -268,15 +264,12 @@ impl XdgShellHandler for WLCState {
     }
 
     fn minimize_request(&mut self, surface: ToplevelSurface) {
-        self.requests.minimize.push(surface);
     }
 
     fn maximize_request(&mut self, surface: ToplevelSurface) {
-        self.requests.maximize.push(surface);
     }
 
     fn unmaximize_request(&mut self, surface: ToplevelSurface) {
-        self.requests.unmaximize.push(surface);
     }
 
     fn fullscreen_request(
@@ -284,11 +277,9 @@ impl XdgShellHandler for WLCState {
         surface: ToplevelSurface,
         _output: Option<WlOutput>,
     ) {
-        self.requests.fullscreen.push(surface);
     }
 
     fn unfullscreen_request(&mut self, surface: ToplevelSurface) {
-        self.requests.unfullscreen.push(surface);
     }
 
     fn move_request(
@@ -297,7 +288,6 @@ impl XdgShellHandler for WLCState {
         _seat: WlSeat,
         serial: Serial,
     ) {
-        self.requests.move_interactive.push(serial);
     }
 
     fn resize_request(
@@ -307,7 +297,6 @@ impl XdgShellHandler for WLCState {
         serial: Serial,
         edges: ResizeEdge,
     ) {
-        self.requests.resize_interactive.push((serial, edges));
     }
 }
 

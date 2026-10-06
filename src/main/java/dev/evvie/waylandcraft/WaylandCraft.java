@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -15,21 +14,14 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 
 import dev.evvie.waylandcraft.bridge.WLCAbstractWindow;
-import dev.evvie.waylandcraft.bridge.WLCAbstractWindow.SurfaceGeometry;
 import dev.evvie.waylandcraft.bridge.WLCPopup;
 import dev.evvie.waylandcraft.bridge.WLCSurface;
 import dev.evvie.waylandcraft.bridge.WLCToplevel;
 import dev.evvie.waylandcraft.bridge.WaylandCraftBridge;
-import dev.evvie.waylandcraft.bridge.WaylandCraftBridge.ResizeRequest;
-import dev.evvie.waylandcraft.bridge.WaylandCraftBridge.Size;
 import dev.evvie.waylandcraft.desktop.XDGDesktopManager;
 import dev.evvie.waylandcraft.displays.WindowDisplay;
 import dev.evvie.waylandcraft.displays.WindowDisplay.DisplayHitResult;
-import dev.evvie.waylandcraft.grabs.DNDGrab;
-import dev.evvie.waylandcraft.grabs.MoveGrab;
 import dev.evvie.waylandcraft.grabs.PointerGrabMap;
-import dev.evvie.waylandcraft.grabs.PointerGrabMap.ImplicitGrab;
-import dev.evvie.waylandcraft.grabs.ResizeGrab;
 import dev.evvie.waylandcraft.gui.AppLauncherScreen;
 import dev.evvie.waylandcraft.gui.TestScreen;
 import dev.evvie.waylandcraft.gui.WaylandHudRenderer;
@@ -240,9 +232,9 @@ public class WaylandCraft implements ClientModInitializer {
 		if(minecraft.player == null) return;
 		checkKeybinds(minecraft);
 		
-		updateDisplayRequests();
+//		updateDisplayRequests();
 		
-//		itemManager.giveItemsIfMissing(bridge.getNewToplevels());
+		itemManager.giveItemsIfMissing(bridge.getNewToplevels());
 		
 		boolean inWMScreen = Minecraft.getInstance().screen instanceof WindowManagerScreen;
 		
@@ -255,8 +247,6 @@ public class WaylandCraft implements ClientModInitializer {
 			
 			bridge.focusSurface(focus);
 		}
-		
-		updateOutputSize(inWMScreen);
 	}
 	
 	public void startUsingWindowItem() {
@@ -334,103 +324,103 @@ public class WaylandCraft implements ClientModInitializer {
 		}
 	}
 	
-	private void updateDisplayRequests() {
-		// Hide all windows that were minimized and unset minimize requested state
-		displays.removeIf((w) -> w.window instanceof WLCToplevel && ((WLCToplevel) w.window).requests.minimize);
-		Stream.of(bridge.getToplevels()).forEach((t) -> t.requests.minimize = false);
-		
-		// Handle any maximize or unmaximize requests
-		for(WLCToplevel toplevel : bridge.getMappedToplevels()) {
-			if(toplevel.requests.maximize && toplevel.requests.unmaximize) {
-				// Both requests shouldn't happen at the same time
-				toplevel.restoreGeometry = null;
-			}
-			else if(toplevel.requests.maximize) {
-				// Maximize toplevel and store its old geometry
-				toplevel.restoreGeometry = toplevel.geometry;
-				bridge.maximizeToplevel(toplevel);
-			}
-			else if(toplevel.requests.unmaximize) {
-				// Unmaximize toplevel and attempt to restore old geometry
-				SurfaceGeometry newGeometry = toplevel.restoreGeometry;
-				if(newGeometry == null) newGeometry = toplevel.geometry;
-				
-				// resizeToplevel also unsets the maximize flag
-				bridge.resizeToplevel(toplevel, newGeometry.width(), newGeometry.height());
-				toplevel.restoreGeometry = null;
-			}
-			
-			toplevel.requests.maximize = toplevel.requests.unmaximize = false;
-		}
-		
-		// Handle any fullscreen or unfullscreen requests
-		for(WLCToplevel toplevel : bridge.getToplevels()) {
-			if(toplevel.requests.fullscreen && toplevel.requests.unfullscreen) {
-				// Both requests shouldn't happen at the same time
-				toplevel.restoreGeometry = null;
-			}
-			else if(toplevel.requests.fullscreen) {
-				// Fullscreen toplevel and store its old geometry
-				toplevel.restoreGeometry = toplevel.geometry;
-				bridge.fullscreenToplevel(toplevel);
-			}
-			else if(toplevel.requests.unfullscreen) {
-				// Unfullscreen toplevel and attempt to restore old geometry
-				SurfaceGeometry newGeometry = toplevel.restoreGeometry;
-				if(newGeometry == null) newGeometry = toplevel.geometry;
-				
-				// resizeToplevel also unsets the fullscreen flag
-				bridge.resizeToplevel(toplevel, newGeometry.width(), newGeometry.height());
-				toplevel.restoreGeometry = null;
-			}
-			
-			toplevel.requests.fullscreen = toplevel.requests.unfullscreen = false;
-		}
-		
-		Integer moveRequest = bridge.checkMoveRequest();
-		if(moveRequest != null) {
-			ImplicitGrab implicit = pointerGrabs.dropImplicitMatching(moveRequest.intValue());
-			if(implicit != null) {
-				// The serial matched an active implicit grab
-				pointerGrabs.startExclusive(new MoveGrab(implicit));
-			}
-		}
-		
-		ResizeRequest resizeRequest = bridge.checkResizeRequest();
-		if(resizeRequest != null) {
-			ImplicitGrab implicit = pointerGrabs.dropImplicitMatching(resizeRequest.serial());
-			if(implicit != null) {
-				// The serial matched an active implicit grab
-				pointerGrabs.startExclusive(new ResizeGrab(implicit, resizeRequest.edges()));
-			}
-		}
-		
-		Integer dndRequest = bridge.checkDndRequest();
-		if(dndRequest != null) {
-			ImplicitGrab implicit = pointerGrabs.dropImplicitMatching(dndRequest);
-			if(implicit != null) {
-				WaylandCraftCommon.LOGGER.info("DND STARTED");
-				// The serial matched an active implicit grab
-				pointerGrabs.startExclusive(new DNDGrab(implicit));
-			}
-			else {
-				// Couldn't match implicit grab, have to cancel dnd
-				WaylandCraftCommon.LOGGER.info("drag and drop did not match implicit grab");
-				bridge.dndCancel();
-			}
-		}
-	}
+//	private void updateDisplayRequests() {
+//		// Hide all windows that were minimized and unset minimize requested state
+//		displays.removeIf((w) -> w.window instanceof WLCToplevel && ((WLCToplevel) w.window).requests.minimize);
+//		Stream.of(bridge.getToplevels()).forEach((t) -> t.requests.minimize = false);
+//		
+//		// Handle any maximize or unmaximize requests
+//		for(WLCToplevel toplevel : bridge.getMappedToplevels()) {
+//			if(toplevel.requests.maximize && toplevel.requests.unmaximize) {
+//				// Both requests shouldn't happen at the same time
+//				toplevel.restoreGeometry = null;
+//			}
+//			else if(toplevel.requests.maximize) {
+//				// Maximize toplevel and store its old geometry
+//				toplevel.restoreGeometry = toplevel.geometry;
+//				bridge.maximizeToplevel(toplevel);
+//			}
+//			else if(toplevel.requests.unmaximize) {
+//				// Unmaximize toplevel and attempt to restore old geometry
+//				SurfaceGeometry newGeometry = toplevel.restoreGeometry;
+//				if(newGeometry == null) newGeometry = toplevel.geometry;
+//				
+//				// resizeToplevel also unsets the maximize flag
+//				bridge.resizeToplevel(toplevel, newGeometry.width(), newGeometry.height());
+//				toplevel.restoreGeometry = null;
+//			}
+//			
+//			toplevel.requests.maximize = toplevel.requests.unmaximize = false;
+//		}
+//		
+//		// Handle any fullscreen or unfullscreen requests
+//		for(WLCToplevel toplevel : bridge.getToplevels()) {
+//			if(toplevel.requests.fullscreen && toplevel.requests.unfullscreen) {
+//				// Both requests shouldn't happen at the same time
+//				toplevel.restoreGeometry = null;
+//			}
+//			else if(toplevel.requests.fullscreen) {
+//				// Fullscreen toplevel and store its old geometry
+//				toplevel.restoreGeometry = toplevel.geometry;
+//				bridge.fullscreenToplevel(toplevel);
+//			}
+//			else if(toplevel.requests.unfullscreen) {
+//				// Unfullscreen toplevel and attempt to restore old geometry
+//				SurfaceGeometry newGeometry = toplevel.restoreGeometry;
+//				if(newGeometry == null) newGeometry = toplevel.geometry;
+//				
+//				// resizeToplevel also unsets the fullscreen flag
+//				bridge.resizeToplevel(toplevel, newGeometry.width(), newGeometry.height());
+//				toplevel.restoreGeometry = null;
+//			}
+//			
+//			toplevel.requests.fullscreen = toplevel.requests.unfullscreen = false;
+//		}
+//		
+//		Integer moveRequest = bridge.checkMoveRequest();
+//		if(moveRequest != null) {
+//			ImplicitGrab implicit = pointerGrabs.dropImplicitMatching(moveRequest.intValue());
+//			if(implicit != null) {
+//				// The serial matched an active implicit grab
+//				pointerGrabs.startExclusive(new MoveGrab(implicit));
+//			}
+//		}
+//		
+//		ResizeRequest resizeRequest = bridge.checkResizeRequest();
+//		if(resizeRequest != null) {
+//			ImplicitGrab implicit = pointerGrabs.dropImplicitMatching(resizeRequest.serial());
+//			if(implicit != null) {
+//				// The serial matched an active implicit grab
+//				pointerGrabs.startExclusive(new ResizeGrab(implicit, resizeRequest.edges()));
+//			}
+//		}
+//		
+//		Integer dndRequest = bridge.checkDndRequest();
+//		if(dndRequest != null) {
+//			ImplicitGrab implicit = pointerGrabs.dropImplicitMatching(dndRequest);
+//			if(implicit != null) {
+//				WaylandCraftCommon.LOGGER.info("DND STARTED");
+//				// The serial matched an active implicit grab
+//				pointerGrabs.startExclusive(new DNDGrab(implicit));
+//			}
+//			else {
+//				// Couldn't match implicit grab, have to cancel dnd
+//				WaylandCraftCommon.LOGGER.info("drag and drop did not match implicit grab");
+//				bridge.dndCancel();
+//			}
+//		}
+//	}
 	
-	private void updateOutputSize(boolean inWMScreen) {
-		int outputWidth = Minecraft.getInstance().getWindow().getWidth();
-		int outputHeight = Minecraft.getInstance().getWindow().getHeight();
-		
-		Size size = bridge.getOutputSize();
-		if(size.width() != outputWidth || size.height() != outputHeight) {
-			bridge.resizeOutput(outputWidth, outputHeight);
-			if(!inWMScreen) bridge.setOutputBounds(outputWidth, outputHeight);
-		}
-	}
+//	private void updateOutputSize(boolean inWMScreen) {
+//		int outputWidth = Minecraft.getInstance().getWindow().getWidth();
+//		int outputHeight = Minecraft.getInstance().getWindow().getHeight();
+//		
+//		Size size = bridge.getOutputSize();
+//		if(size.width() != outputWidth || size.height() != outputHeight) {
+//			bridge.resizeOutput(outputWidth, outputHeight);
+//			if(!inWMScreen) bridge.setOutputBounds(outputWidth, outputHeight);
+//		}
+//	}
 	
 	public @Nullable WindowDisplay getDisplay(WLCAbstractWindow window) {
 		return displays.stream().filter((w) -> w.window == window).findAny().orElse(null);

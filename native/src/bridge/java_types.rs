@@ -6,6 +6,62 @@ use smithay::backend::drm::CreateDrmNodeError;
 use thiserror::Error;
 
 bind_java_type! {
+    rust_type = pub WLCToplevel,
+    java_type = dev.evvie.waylandcraft.bridge.WLCToplevel,
+
+    type_map {
+        WLCSurface => dev.evvie.waylandcraft.bridge.WLCSurface,
+    },
+
+    constructors {
+        fn new(handle: jlong, surface: WLCSurface),
+    },
+
+    fields {
+        handle: jlong,
+        surface: WLCSurface,
+        title: JString,
+        app_id {
+            sig = JString,
+            name = "appID",
+        },
+    },
+
+    methods {
+        fn default_geometry(),
+        fn update_geometry(x: jint, y: jint, width: jint, height: jint),
+    },
+
+}
+
+bind_java_type! {
+    rust_type = pub WLCPopup,
+    java_type = dev.evvie.waylandcraft.bridge.WLCPopup,
+
+    type_map {
+        WLCAbstractWindow => dev.evvie.waylandcraft.bridge.WLCAbstractWindow,
+        WLCSurface => dev.evvie.waylandcraft.bridge.WLCSurface,
+    },
+
+    constructors {
+        fn new(handle: jlong, surface: WLCSurface),
+    },
+
+    fields {
+        handle: jlong,
+        surface: WLCSurface,
+        parent: WLCAbstractWindow,
+        offset_x: jint,
+        offset_y: jint,
+    },
+}
+
+bind_java_type! {
+    rust_type = pub WLCAbstractWindow,
+    java_type = dev.evvie.waylandcraft.bridge.WLCAbstractWindow,
+}
+
+bind_java_type! {
     rust_type = pub WLCSurface,
     java_type = dev.evvie.waylandcraft.bridge.WLCSurface,
 
@@ -183,6 +239,8 @@ bind_java_type! {
 
     type_map {
         WLCSurface => dev.evvie.waylandcraft.bridge.WLCSurface,
+        WLCToplevel => dev.evvie.waylandcraft.bridge.WLCToplevel,
+        WLCPopup => dev.evvie.waylandcraft.bridge.WLCPopup,
         JRawDesktopEntry => dev.evvie.waylandcraft.desktop.RawDesktopEntry,
         JDmabufFormat => dev.evvie.waylandcraft.bridge.dmabuf.DmabufFormat,
         JDmabufPlane => dev.evvie.waylandcraft.bridge.dmabuf.DmabufPlane,
@@ -194,6 +252,8 @@ bind_java_type! {
     methods {
         fn add_surface(WLCSurface),
         fn delete_surface(WLCSurface),
+        fn add_toplevel(WLCToplevel),
+        fn delete_toplevel(WLCToplevel),
     },
 
     constructors {
@@ -250,4 +310,8 @@ pub enum BridgeError {
     SurfaceGone,
     #[error("Surface is null")]
     SurfaceNull,
+    #[error("Toplevel is already gone")]
+    ToplevelGone,
+    #[error("Toplevel is null")]
+    ToplevelNull,
 }

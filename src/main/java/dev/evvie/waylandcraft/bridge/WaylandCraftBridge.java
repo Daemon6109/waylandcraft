@@ -21,7 +21,6 @@ import dev.evvie.waylandcraft.bridge.dmabuf.DmabufFormat;
 import dev.evvie.waylandcraft.desktop.RawDesktopEntry;
 import dev.evvie.waylandcraft.egl.EGL;
 import dev.evvie.waylandcraft.egl.EGLHelper;
-import dev.evvie.waylandcraft.render.BufferTexture.DmabufTexture;
 import dev.evvie.waylandcraft.render.WindowFramebuffer;
 import dev.evvie.waylandcraft.utils.CursorShape;
 import net.minecraft.util.profiling.Profiler;
@@ -33,8 +32,6 @@ public class WaylandCraftBridge {
 	private ArrayList<WLCToplevel> toplevels = new ArrayList<WLCToplevel>();
 	private ArrayList<WLCPopup> popups = new ArrayList<WLCPopup>();
 	private ArrayList<WLCSurface> surfaces = new ArrayList<WLCSurface>();
-	private ArrayList<DmabufTexture> dmabufs = new ArrayList<DmabufTexture>();
-	private ArrayList<WindowFramebuffer> framebuffers = new ArrayList<WindowFramebuffer>();
 	
 	public IconSurface dndIcon = null;
 	
@@ -164,6 +161,15 @@ public class WaylandCraftBridge {
 		dispatchClients(instance);
 		profiler.pop();
 		
+		// Add newly mapped toplevels to newToplevels
+		for(WLCToplevel toplevel : toplevels) {
+			boolean mapped = toplevel.isMapped();
+			if(mapped && !toplevel.wasMapped) {
+				newToplevels.add(toplevel);
+			}
+			toplevel.wasMapped = mapped;
+		}
+		
 		updateFocusOrder();
 		
 		// Do client frame callbacks
@@ -188,8 +194,23 @@ public class WaylandCraftBridge {
 		surface.destroy();
 	}
 	
+	protected void addToplevel(WLCToplevel toplevel) {
+		toplevels.add(toplevel);
+	}
+	
+	protected void deleteToplevel(WLCToplevel toplevel) {
+		toplevels.remove(toplevel);
+	}
+	
 	public WLCSurface[] getAllSurfaces() {
 		return surfaces.toArray(WLCSurface[]::new);
+	}
+	
+	public WLCToplevel[] getNewToplevels() {
+		WLCToplevel[] toplevels = newToplevels.toArray(WLCToplevel[]::new);
+		newToplevels.clear();
+		
+		return toplevels;
 	}
 	
 	/*
@@ -534,18 +555,6 @@ public class WaylandCraftBridge {
 //		}
 //		
 //		window.geometry = geometry;
-//	}
-	
-//	private void calculateSubpos(WLCSurface surface) {
-//		if(surface.parent != null) {
-//			calculateSubpos(surface.parent);
-//			surface.xSubpos = surface.parent.xSubpos + surface.xoff;
-//			surface.ySubpos = surface.parent.ySubpos + surface.yoff;
-//		}
-//		else {
-//			surface.xSubpos = 0;
-//			surface.ySubpos = 0;
-//		}
 //	}
 	
 	public WLCToplevel[] getToplevels() {

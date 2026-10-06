@@ -4,7 +4,6 @@ import dev.evvie.waylandcraft.render.WindowFramebuffer;
 
 public abstract class WLCAbstractWindow {
 	
-	// Set to zero when this window no longer exists
 	private long handle;
 	
 	protected WLCSurface surface;
@@ -13,22 +12,14 @@ public abstract class WLCAbstractWindow {
 	
 	public SurfaceGeometry geometry;
 	
-	public WLCAbstractWindow(long handle) {
+	public WLCAbstractWindow(long handle, WLCSurface surface) {
 		this.handle = handle;
-	}
-	
-	public long getHandle() {
-		return this.handle;
-	}
-	
-	protected long takeHandle() {
-		long old = this.handle;
-		this.handle = 0;
-		return old;
+		this.surface = surface;
+		this.geometry = new SurfaceGeometry(0, 0, 0, 0);
 	}
 	
 	public boolean isAlive() {
-		return handle != 0;
+		return getHandle() != 0;
 	}
 	
 	public WLCSurface getRootSurface() {
@@ -43,7 +34,18 @@ public abstract class WLCAbstractWindow {
 		return isAlive() && getRootSurface().getBuffer() != null;
 	}
 	
-	public static record SurfaceGeometry(int x, int y, int width, int height) {
+	public long getHandle() {
+		return handle;
 	}
+	
+	protected void defaultGeometry() {
+		this.geometry = new SurfaceGeometry(0, 0, surface.width(), surface.height());
+	}
+	
+	protected void updateGeometry(int x, int y, int width, int height) {
+		this.geometry = new SurfaceGeometry(x, y, width, height);
+	}
+	
+	public static record SurfaceGeometry(int x, int y, int width, int height) {}
 	
 }

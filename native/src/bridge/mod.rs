@@ -24,6 +24,7 @@ pub mod compositor;
 mod drm;
 pub mod dmabuf;
 mod java_types;
+pub mod shell;
 mod utils;
 
 pub struct BridgeState {
