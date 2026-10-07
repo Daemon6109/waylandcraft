@@ -34,7 +34,7 @@ public class WaylandCraftBridge {
 	private ArrayList<WLCPopup> popups = new ArrayList<WLCPopup>();
 	private ArrayList<WLCSurface> surfaces = new ArrayList<WLCSurface>();
 	
-	public IconSurface dndIcon = null;
+	public WLCSurface dndIcon = null;
 	
 	private LinkedList<WLCToplevel> focusOrder = new LinkedList<WLCToplevel>();
 	
@@ -171,7 +171,11 @@ public class WaylandCraftBridge {
 			toplevel.wasMapped = mapped;
 		}
 		
+		// Update focus order of toplevels
 		updateFocusOrder();
+		
+		// Remove dnd icon if its surface was destroyed
+		if(dndIcon != null && !dndIcon.isAlive()) dndIcon = null;
 		
 		// Do client frame callbacks
 		for(WLCSurface surface : surfaces) {
@@ -215,156 +219,6 @@ public class WaylandCraftBridge {
 	}
 	
 	/*
-	protected WLCToplevel getOrCreateToplevel(long topLevelHandle) {
-		for(WLCToplevel toplevel : toplevels) {
-			if(toplevel.getHandle() == topLevelHandle) return toplevel;
-		}
-		WLCToplevel toplevel = new WLCToplevel(topLevelHandle);
-		
-		long surfaceHandle = toplevelSurface(this.instance, topLevelHandle);
-		WLCSurface surface = getOrCreateSurface(surfaceHandle);
-		toplevel.surface = surface;
-		
-		toplevels.add(toplevel);
-		return toplevel;
-	}
-	
-	public WLCToplevel[] getNewToplevels() {
-		WLCToplevel[] toplevels = newToplevels.toArray(WLCToplevel[]::new);
-		newToplevels.clear();
-		
-		return toplevels;
-	}
-	
-	protected WLCPopup getOrCreatePopup(long handle) {
-		for(WLCPopup popup : popups) {
-			if(popup.getHandle() == handle) return popup;
-		}
-		WLCPopup popup = new WLCPopup(handle);
-		
-		long surfaceHandle = popupSurface(this.instance, handle);
-		WLCSurface surface = getOrCreateSurface(surfaceHandle);
-		popup.surface = surface;
-		
-		popup.parentHandle = popupParent(this.instance, handle);
-		
-		popups.add(popup);
-		return popup;
-	}
-	
-	protected WLCSurface getOrCreateSurface(long handle) {
-		for(WLCSurface surface : surfaces) {
-			if(surface.getHandle() == handle) return surface;
-		}
-		WLCSurface surface = new WLCSurface(handle);
-		surfaces.add(surface);
-		return surface;
-	}
-	
-	protected DmabufTexture getDmabuf(long handle) {
-		for(DmabufTexture dmabuf : dmabufs) {
-			if(dmabuf.handle == handle) return dmabuf;
-		}
-		return null;
-	}
-	
-	private void deleteNonExistingToplevels(long[] remainingHandles) {
-		ArrayList<WLCToplevel> toplevels_new = new ArrayList<WLCToplevel>();
-		for(WLCToplevel toplevel : this.toplevels) {
-			if(ArrayUtils.contains(remainingHandles, toplevel.getHandle())) {
-				toplevels_new.add(toplevel);
-			}
-			else {
-				freeToplevel(this.instance, toplevel.takeHandle());
-			}
-		}
-		this.toplevels = toplevels_new;
-	}
-	
-	private void deleteNonExistingPopups(long[] remainingHandles) {
-		ArrayList<WLCPopup> popups_new = new ArrayList<WLCPopup>();
-		for(WLCPopup popup : this.popups) {
-			if(ArrayUtils.contains(remainingHandles, popup.getHandle())) {
-				popups_new.add(popup);
-			}
-			else {
-				freePopup(this.instance, popup.takeHandle());
-			}
-		}
-		this.popups = popups_new;
-	}
-	
-	protected boolean importDmabuf(Dmabuf dmabuf) {
-		try {
-			DmabufTexture texture = BufferTexture.createDmabufTexture(dmabuf);
-			dmabufs.add(texture);
-			return true;
-		} catch(DmabufImportFailedException e) {
-			return false;
-		}
-	}
-	
-	private void updateDmabufs() {
-		checkImportDmabuf(instance);
-		
-		long[] remainingHandles = dmabufs(instance);
-		ArrayList<DmabufTexture> dmabufs_new = new ArrayList<DmabufTexture>();
-		for(DmabufTexture dmabuf : this.dmabufs) {
-			// If the dmabuf texture is not attached to a real wl_buffer anymore, free the imported resources
-			boolean retained = ArrayUtils.contains(remainingHandles, dmabuf.handle);
-			if(!retained) dmabuf.doFree();
-			
-			// Remove it from the list and free the texture if no longer attached to any surface
-			boolean used = false;
-			for(WLCSurface surface : surfaces) {
-				if(surface.getBuffer() == dmabuf) {
-					used = true;
-					break;
-				}
-			}
-			if(retained || used) {
-				dmabufs_new.add(dmabuf);
-			}
-			else {
-				dmabuf.doReleaseTexure();
-			}
-		}
-		this.dmabufs = dmabufs_new;
-	}
-	
-	private void deleteUnvisitedSurfaces() {
-		ArrayList<WLCSurface> surfaces_new = new ArrayList<WLCSurface>();
-		for(WLCSurface surface : this.surfaces) {
-			if(surface.visited) {
-				surfaces_new.add(surface);
-			}
-			else {
-				surface.destroy();
-				freeSurface(this.instance, surface.takeHandle());
-			}
-		}
-		this.surfaces = surfaces_new;
-	}
-	
-	private void findPopupParent(WLCPopup popup) {
-		// Popups cannot change their parent, so if one is found, it's the one
-		if(popup.parent != null) return;
-		
-		for(WLCToplevel toplevel : toplevels) {
-			if(toplevel.getHandle() == popup.parentHandle) {
-				popup.parent = toplevel;
-				return;
-			}
-		}
-		
-		for(WLCPopup popup2 : popups) {
-			if(popup2.getHandle() == popup.parentHandle) {
-				popup.parent = popup2;
-				return;
-			}
-		}
-	}
-	
 	public void update() {
 		ProfilerFiller profiler = Profiler.get();
 		profiler.push("wayland");
@@ -506,57 +360,7 @@ public class WaylandCraftBridge {
 		
 		profiler.pop();
 	}
-	
-	private void updateFramebuffers() {
-		List<WLCAbstractWindow> allWindows = Stream.of(toplevels, popups).flatMap((l) -> l.stream()).collect(Collectors.toList());
-		
-		// Render windows
-		for(WLCAbstractWindow window : allWindows) {
-			if(window.framebuffer == null) {
-				window.framebuffer = new WindowFramebuffer(window.getSurfaceTree());
-				framebuffers.add(window.framebuffer);
-			}
-			window.framebuffer.render();
-		}
-		
-		// Render dnd icon
-		if(dndIcon != null) {
-			if(dndIcon.framebuffer == null) {
-				dndIcon.framebuffer = new WindowFramebuffer(dndIcon.surface);
-				framebuffers.add(dndIcon.framebuffer);
-			}
-			dndIcon.framebuffer.render();
-		}
-		
-		// Cleanup unused framebuffers
-		ArrayList<WindowFramebuffer> usedFramebuffers = new ArrayList<WindowFramebuffer>();
-		for(WindowFramebuffer framebuffer : framebuffers) {
-			if(framebuffer.surfaceTree.isAlive()) {
-				usedFramebuffers.add(framebuffer);
-			}
-			else {
-				framebuffer.destroy();
-			}
-		}
-		framebuffers.retainAll(usedFramebuffers);
-		
-		WindowFramebuffer.endFrame();
-	}
 	*/
-	
-//	private void updateGeometry(WLCAbstractWindow window) {
-//		int[] data = surfaceXDGGeometry(window.surface.getHandle());
-//		SurfaceGeometry geometry;
-//		
-//		if(data == null) {
-//			geometry = new SurfaceGeometry(0, 0, window.surface.width(), window.surface.height());
-//		}
-//		else {
-//			geometry = new SurfaceGeometry(data[0], data[1], data[2], data[3]);
-//		}
-//		
-//		window.geometry = geometry;
-//	}
 	
 	public WLCToplevel[] getToplevels() {
 		return toplevels.toArray(new WLCToplevel[toplevels.size()]);

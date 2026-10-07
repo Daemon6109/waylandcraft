@@ -8,8 +8,8 @@ import org.joml.Matrix3x2fStack;
 import dev.evvie.waylandcraft.WaylandCraft;
 import dev.evvie.waylandcraft.WaylandCraft.KeyboardCaptureMode;
 import dev.evvie.waylandcraft.WaylandCraftCommon;
-import dev.evvie.waylandcraft.bridge.IconSurface;
 import dev.evvie.waylandcraft.bridge.WLCAbstractWindow.SurfaceGeometry;
+import dev.evvie.waylandcraft.bridge.WLCSurface;
 import dev.evvie.waylandcraft.bridge.WLCToplevel;
 import dev.evvie.waylandcraft.desktop.DesktopEntry;
 import dev.evvie.waylandcraft.render.RenderUtils;
@@ -119,22 +119,23 @@ public class WaylandHudRenderer {
 	private void extractDNDIconRenderState(GuiGraphicsExtractor context, DeltaTracker tracker) {
 		int guiScale = (int) Minecraft.getInstance().getWindow().getGuiScale();
 		
-		IconSurface dndIcon = wlc.bridge.dndIcon;
-		if(dndIcon != null && dndIcon.framebuffer != null) {
-			WindowFramebuffer buf = dndIcon.framebuffer;
-			
-			int x = -buf.getXOff();
-			int y = -buf.getYOff();
-			int w = buf.getWidth();
-			int h = buf.getHeight();
-			
-			Matrix3x2fStack stack = context.pose();
-			stack.pushMatrix();
-			stack.translate(context.guiWidth() / 2, context.guiHeight() / 2);
-			stack.scale(1.0f / guiScale, 1.0f / guiScale);
-			RenderUtils.renderFramebuffer2D(context, buf, x, y, w, h);
-			stack.popMatrix();
-		}
+		WLCSurface dndIcon = wlc.bridge.dndIcon;
+		if(dndIcon == null) return;
+		
+		WindowFramebuffer buf = dndIcon.getFramebuffer();
+		if(buf == null) return;
+		
+		int x = -buf.getXOff();
+		int y = -buf.getYOff();
+		int w = buf.getWidth();
+		int h = buf.getHeight();
+		
+		Matrix3x2fStack stack = context.pose();
+		stack.pushMatrix();
+		stack.translate(context.guiWidth() / 2, context.guiHeight() / 2);
+		stack.scale(1.0f / guiScale, 1.0f / guiScale);
+		RenderUtils.renderFramebuffer2D(context, buf, x, y, w, h);
+		stack.popMatrix();
 	}
 	
 	private void extractTimeDateRenderState(GuiGraphicsExtractor context, DeltaTracker deltaTracker) {
