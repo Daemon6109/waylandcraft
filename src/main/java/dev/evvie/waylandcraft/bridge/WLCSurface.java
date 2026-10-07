@@ -65,6 +65,7 @@ public class WLCSurface {
 	protected void destroy() {
 		removeBuffer();
 		if(framebuffer != null) framebuffer.destroy();
+		framebuffer = null;
 		System.out.println("destroy: " + this);
 	}
 	
