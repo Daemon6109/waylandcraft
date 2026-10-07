@@ -466,7 +466,7 @@ public class WaylandCraft implements ClientModInitializer {
 			if(pointerCapture instanceof LockedPointerCapture) this.cursorShape = bridge.getCursorShape();
 			else this.cursorShape = CursorShape.HIDE;
 			
-			boolean locked = pointerCapture.surface != null && bridge.maybeLockPointer(pointerCapture.surface);
+			boolean locked = pointerCapture.surface != null && pointerCapture.surface.isAlive() && bridge.maybeLockPointer(pointerCapture.surface);
 			boolean detach = settings.getDetachCursor();
 			if(pointerCapture instanceof LockedPointerCapture && !locked) {
 				PointerCapture old = pointerCapture;
