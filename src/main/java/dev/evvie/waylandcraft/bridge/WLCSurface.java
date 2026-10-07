@@ -69,7 +69,7 @@ public class WLCSurface {
 	}
 	
 	protected void commit() {
-		if(parent != null) return;
+		if(parent != null) throw new IllegalStateException("commit() called on subsurface!");
 		if(framebuffer == null) framebuffer = new WindowFramebuffer(this);
 		framebuffer.render();
 	}

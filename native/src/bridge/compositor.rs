@@ -210,10 +210,11 @@ fn _surface_commit<'local>(
             let jsurface = &data.data_map.get::<MySurface>().unwrap().0;
             update_surface_data(env, state, surface, data, jsurface)
                 .expect("update_surface_data");
-            jsurface.commit(env).unwrap();
         },
         |_, _, _| true
     );
+
+    jroot.commit(env)?;
 
     // If this surface is a toplevel, update its state
     if let Some(toplevel) = toplevel_for_surface(state, surface) {
