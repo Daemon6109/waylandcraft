@@ -111,7 +111,7 @@ fn _free_dmabuf<'local>(
 }
 
 pub fn get_dmabuf_java<'local, 'a>(
-    env: &mut Env<'local>,
+    _env: &mut Env<'local>,
     state: &'a mut WLCState,
     dmabuf: &Dmabuf,
 ) -> Option<&'a JDmabufTexture<'local>> {

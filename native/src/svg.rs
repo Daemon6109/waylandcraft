@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 // Render svg file found at path to byte buffer data with resolution
 // width x height. data has to be a buffer of at least 4 * width * height.
+#[allow(unused)]
 pub fn render_svg(
     path: PathBuf,
     width: u32,

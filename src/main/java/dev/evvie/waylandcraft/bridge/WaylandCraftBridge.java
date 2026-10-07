@@ -684,24 +684,27 @@ public class WaylandCraftBridge {
 		keyboardUpdate(instance, scancode, pressed);
 	}
 	
+	// Resize toplevel interactively (due to user pointer movement)
 	public void resizeToplevelInteractive(WLCToplevel toplevel, int width, int height) {
-//		toplevelResize(toplevel.getHandle(), width, height, true);
+		toplevelResize(instance, toplevel, width, height, true);
 	}
 	
+	// Resize toplevel normally (one-shot)
 	public void resizeToplevel(WLCToplevel toplevel, int width, int height) {
-//		toplevelResize(toplevel.getHandle(), width, height, false);
+		toplevelResize(instance, toplevel, width, height, false);
 	}
 	
+	// Resize toplevel while keeping fullscreen/maximized state
 	public void resizeToplevelOverride(WLCToplevel toplevel, int width, int height) {
-//		toplevelResizeOvr(toplevel.getHandle(), width, height);
+		toplevelResizeOvr(instance, toplevel, width, height);
 	}
 	
 	public void maximizeToplevel(WLCToplevel toplevel) {
-//		toplevelMaximize(instance, toplevel.getHandle());
+		toplevelMaximize(instance, toplevel);
 	}
 	
 	public void fullscreenToplevel(WLCToplevel toplevel) {
-//		toplevelFullscreen(instance, toplevel.getHandle());
+		toplevelFullscreen(instance, toplevel);
 	}
 	
 	public Integer checkMoveRequest() {
@@ -721,23 +724,21 @@ public class WaylandCraftBridge {
 	}
 	
 	public void resizeOutput(int width, int height) {
-//		outputResize(instance, width, height);
+		outputResize(instance, width, height);
 	}
 	
 	public void setOutputBounds(int width, int height) {
-//		outputSetBounds(instance, width, height);
+		outputSetBounds(instance, width, height);
 	}
 	
 	public Size getOutputSize() {
-//		int[] size = outputSize(instance);
-//		return new Size(size[0], size[1]);
-		return new Size(1, 1);
+		int[] size = outputSize(instance);
+		return new Size(size[0], size[1]);
 	}
 	
 	public Size getOutputBounds() {
-//		int[] size = outputBounds(instance);
-//		return new Size(size[0], size[1]);
-		return new Size(1, 1);
+		int[] size = outputBounds(instance);
+		return new Size(size[0], size[1]);
 	}
 	
 	public RawDesktopEntry loadDesktopEntry(File path) {
@@ -828,36 +829,21 @@ public class WaylandCraftBridge {
 	private static native void keyboardUpdate(long instance, int scancode, boolean pressed);
 	private static native boolean setKeymapFromStr(long instance, String keymap);
 	
+	/* Shell functionality */
+	private static native void toplevelResize(long instance, WLCToplevel toplevel, int width, int height, boolean interactive);
+	private static native void toplevelResizeOvr(long instance, WLCToplevel toplevel, int width, int height);
+	private static native void toplevelMaximize(long instance, WLCToplevel toplevel);
+	private static native void toplevelFullscreen(long instance, WLCToplevel toplevel);
+	
+	/* Output functionality */
+	private static native int[] outputSize(long instance);
+	private static native int[] outputBounds(long instance);
+	private static native void outputResize(long instance, int width, int height);
+	private static native void outputSetBounds(long instance, int width, int height);
+	
 	
 	// TODO: Implement the following stuff (or alternatives to them):
 	/*
-	// Resize toplevel
-	private static native void toplevelResize(long topLevelHandle, int width, int height, boolean interactive);
-	// Resize toplevel override, keep maximized and fullscreen state, stop interactive resize
-	private static native void toplevelResizeOvr(long topLevelHandle, int width, int height);
-	
-	// Collect all toplevels that have sent a minimize request and clear the list
-	private static native long[] minimizeReq(long instance);
-	// Collect all toplevels that have sent a maximize request and clear the list
-	private static native long[] maximizeReq(long instance);
-	// Collect all toplevels that have sent an unmaximize request and clear the list
-	private static native long[] unmaximizeReq(long instance);
-	// Collect all toplevels that have sent a fullscreen request and clear the list
-	private static native long[] fullscreenReq(long instance);
-	// Collect all toplevels that have sent an unfullscreen request and clear the list
-	private static native long[] unfullscreenReq(long instance);
-	
-	// Collect up to one serial of a sent interactive move request
-	private static native int[] moveRequest(long instance);
-	// Collect up to one serial of a sent interactive resize request
-	private static native int[] resizeRequest(long instance);
-	
-	// All toplevels that are currently in fullscreen
-	private static native long[] fullscreened(long instance);
-	
-	private static native void toplevelMaximize(long instance, long topLevelHandle);
-	private static native void toplevelFullscreen(long instance, long topLevelHandle);
-	
 	private static native long[] popups(long instance);
 	private static native long popupSurface(long instance, long topLevelHandle);
 	// Query the parent of a popup
@@ -866,15 +852,6 @@ public class WaylandCraftBridge {
 	// Query popup local offset coordinates
 	// Returns two-element list containing x,y
 	private static native int[] popupOffset(long popupHandle);
-	
-	private static native int[] outputSize(long instance);
-	private static native int[] outputBounds(long instance);
-	
-	// Update virtual output dimensions
-	private static native void outputResize(long instance, int width, int height);
-	
-	// Update virtual output maximum window bounds
-	private static native void outputSetBounds(long instance, int width, int height);
 	
 	private static native RawDesktopEntry loadDesktopEntry(long instance, String path);
 	private static native RawDesktopEntry[] loadDesktopEntries(long instance);

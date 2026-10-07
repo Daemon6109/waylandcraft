@@ -25,6 +25,7 @@ bind_java_type! {
             sig = JString,
             name = "appID",
         },
+        fullscreen: jboolean,
     },
 
     methods {
@@ -369,6 +370,53 @@ bind_java_type! {
             sig = (instance: jlong, keymap: JString) -> jboolean,
             fn = bridge::seat::set_keymap_from_str,
         },
+
+        /* Shell */
+        static extern fn toplevel_resize {
+            sig = (
+                instance: jlong,
+                toplevel: WLCToplevel,
+                width: jint,
+                height: jint,
+                interactive: jboolean,
+            ),
+            fn = bridge::shell::toplevel_resize,
+        },
+        static extern fn toplevel_resize_ovr {
+            sig = (
+                instance: jlong,
+                toplevel: WLCToplevel,
+                width: jint,
+                height: jint,
+            ),
+            fn = bridge::shell::toplevel_resize_ovr,
+        },
+        static extern fn toplevel_maximize {
+            sig = (instance: jlong, toplevel: WLCToplevel),
+            fn = bridge::shell::toplevel_maximize,
+        },
+        static extern fn toplevel_fullscreen {
+            sig = (instance: jlong, toplevel: WLCToplevel),
+            fn = bridge::shell::toplevel_fullscreen,
+        },
+
+        /* Output */
+        static extern fn output_size {
+            sig = (instance: jlong) -> jint[],
+            fn = bridge::output::output_size,
+        },
+        static extern fn output_bounds {
+            sig = (instance: jlong) -> jint[],
+            fn = bridge::output::output_bounds,
+        },
+        static extern fn output_resize {
+            sig = (instance: jlong, width: jint, height: jint),
+            fn = bridge::output::output_resize,
+        },
+        static extern fn output_set_bounds {
+            sig = (instance: jlong, width: jint, height: jint),
+            fn = bridge::output::output_set_bounds,
+        },
     },
 }
 
@@ -398,4 +446,6 @@ pub enum BridgeError {
     UnknownScrollDirection(jint),
     #[error("Unknown keyboard state {0} received")]
     UnknownKeyboardState(jint),
+    #[error("Invalid output size")]
+    InvalidOutputSize,
 }

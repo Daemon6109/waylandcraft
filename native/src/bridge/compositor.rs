@@ -71,6 +71,7 @@ macro_rules! get_java_surface_opt {
         }
     };
 }
+#[allow(unused)]
 pub use get_java_surface_opt;
 
 pub fn get_java_surfaces<'local>(
@@ -154,7 +155,7 @@ pub fn subsurface_created(
 
 fn _subsurface_created<'local>(
     env: &mut Env<'local>,
-    state: &mut WLCState,
+    _state: &mut WLCState,
     surface: &WlSurface,
     parent: &WlSurface
 ) -> Result<(), BridgeError> {
@@ -261,7 +262,7 @@ fn update_trees<'local>(
 fn update_surface_data<'local>(
     env: &mut Env<'local>,
     state: &mut WLCState,
-    surface: &WlSurface,
+    _surface: &WlSurface,
     data: &SurfaceData,
     jsurface: &WLCSurface<'local>,
 ) -> Result<(), BridgeError> {

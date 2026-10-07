@@ -241,6 +241,8 @@ impl XdgShellHandler for WLCState {
             state.positioner = positioner;
         });
         surface.send_configure().expect("popup initial configure");
+
+        bridge::shell::new_popup(self, &surface);
     }
 
     fn popup_destroyed(&mut self, surface: PopupSurface) {
@@ -263,30 +265,30 @@ impl XdgShellHandler for WLCState {
         surface.send_repositioned(token);
     }
 
-    fn minimize_request(&mut self, surface: ToplevelSurface) {
+    fn minimize_request(&mut self, _surface: ToplevelSurface) {
     }
 
-    fn maximize_request(&mut self, surface: ToplevelSurface) {
+    fn maximize_request(&mut self, _surface: ToplevelSurface) {
     }
 
-    fn unmaximize_request(&mut self, surface: ToplevelSurface) {
+    fn unmaximize_request(&mut self, _surface: ToplevelSurface) {
     }
 
     fn fullscreen_request(
         &mut self,
-        surface: ToplevelSurface,
+        _surface: ToplevelSurface,
         _output: Option<WlOutput>,
     ) {
     }
 
-    fn unfullscreen_request(&mut self, surface: ToplevelSurface) {
+    fn unfullscreen_request(&mut self, _surface: ToplevelSurface) {
     }
 
     fn move_request(
         &mut self,
         _surface: ToplevelSurface,
         _seat: WlSeat,
-        serial: Serial,
+        _serial: Serial,
     ) {
     }
 
@@ -294,8 +296,8 @@ impl XdgShellHandler for WLCState {
         &mut self,
         _surface: ToplevelSurface,
         _seat: WlSeat,
-        serial: Serial,
-        edges: ResizeEdge,
+        _serial: Serial,
+        _edges: ResizeEdge,
     ) {
     }
 }
@@ -361,12 +363,10 @@ pub fn wlc_init(
 
     let desktop_helper = DesktopHelper::init();
 
-    /*
     match satellite::start_satellite(&state.socket) {
         Ok(s) => state.satellite = Some(s),
         Err(e) => eprintln!("Failed to start xwayland-satellite! Error: {e}"),
     }
-    */
 
     let instance = WaylandCraft {
         state,

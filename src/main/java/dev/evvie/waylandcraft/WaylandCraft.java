@@ -18,6 +18,7 @@ import dev.evvie.waylandcraft.bridge.WLCPopup;
 import dev.evvie.waylandcraft.bridge.WLCSurface;
 import dev.evvie.waylandcraft.bridge.WLCToplevel;
 import dev.evvie.waylandcraft.bridge.WaylandCraftBridge;
+import dev.evvie.waylandcraft.bridge.WaylandCraftBridge.Size;
 import dev.evvie.waylandcraft.desktop.XDGDesktopManager;
 import dev.evvie.waylandcraft.displays.WindowDisplay;
 import dev.evvie.waylandcraft.displays.WindowDisplay.DisplayHitResult;
@@ -232,8 +233,6 @@ public class WaylandCraft implements ClientModInitializer {
 		if(minecraft.player == null) return;
 		checkKeybinds(minecraft);
 		
-//		updateDisplayRequests();
-		
 		itemManager.giveItemsIfMissing(bridge.getNewToplevels());
 		
 		boolean inWMScreen = Minecraft.getInstance().screen instanceof WindowManagerScreen;
@@ -247,6 +246,8 @@ public class WaylandCraft implements ClientModInitializer {
 			
 			bridge.focusSurface(focus);
 		}
+		
+		updateOutputSize(inWMScreen);
 	}
 	
 	public void startUsingWindowItem() {
@@ -411,16 +412,16 @@ public class WaylandCraft implements ClientModInitializer {
 //		}
 //	}
 	
-//	private void updateOutputSize(boolean inWMScreen) {
-//		int outputWidth = Minecraft.getInstance().getWindow().getWidth();
-//		int outputHeight = Minecraft.getInstance().getWindow().getHeight();
-//		
-//		Size size = bridge.getOutputSize();
-//		if(size.width() != outputWidth || size.height() != outputHeight) {
-//			bridge.resizeOutput(outputWidth, outputHeight);
-//			if(!inWMScreen) bridge.setOutputBounds(outputWidth, outputHeight);
-//		}
-//	}
+	private void updateOutputSize(boolean inWMScreen) {
+		int outputWidth = Minecraft.getInstance().getWindow().getWidth();
+		int outputHeight = Minecraft.getInstance().getWindow().getHeight();
+		
+		Size size = bridge.getOutputSize();
+		if(size.width() != outputWidth || size.height() != outputHeight) {
+			bridge.resizeOutput(outputWidth, outputHeight);
+			if(!inWMScreen) bridge.setOutputBounds(outputWidth, outputHeight);
+		}
+	}
 	
 	public @Nullable WindowDisplay getDisplay(WLCAbstractWindow window) {
 		return displays.stream().filter((w) -> w.window == window).findAny().orElse(null);

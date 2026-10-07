@@ -12,11 +12,6 @@ use jni::{
     refs::Global,
     sys::jlong,
 };
-use smithay::{
-    backend::allocator::dmabuf::WeakDmabuf,
-    reexports::wayland_server::protocol::wl_surface::WlSurface,
-    wayland::shell::xdg::{PopupSurface, ToplevelSurface},
-};
 use std::mem::MaybeUninit;
 use std::time::Duration;
 
@@ -24,6 +19,7 @@ pub mod compositor;
 mod drm;
 pub mod dmabuf;
 mod java_types;
+mod output;
 mod seat;
 pub mod shell;
 mod utils;

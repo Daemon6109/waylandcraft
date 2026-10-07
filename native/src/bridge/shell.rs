@@ -3,22 +3,25 @@ use crate::{
     bridge::{
         compositor::get_java_surface,
         java_types::{BridgeError, WLCToplevel},
-        utils::with_env,
+        utils::{jptr_to_instance, with_env},
     },
 };
 use jni::{
     Env,
-    objects::Global,
-    sys::jlong,
+    objects::{Global, JClass},
+    sys::{jboolean, jint, jlong},
 };
 use smithay::{
     reexports::{
-        wayland_protocols::xdg::shell::server::xdg_toplevel::XdgToplevel,
+        wayland_protocols::xdg::shell::server::xdg_toplevel::{
+            self, XdgToplevel,
+        },
         wayland_server::{
             Resource, Weak,
             protocol::wl_surface::WlSurface,
         },
     },
+    utils::Size,
     wayland::{
         compositor::with_states,
         shell::xdg::{
@@ -124,7 +127,7 @@ pub fn toplevel_for_surface(
 
 pub fn toplevel_commit<'local>(
     env: &mut Env<'local>,
-    state: &mut WLCState,
+    _state: &mut WLCState,
     toplevel: &ToplevelSurface,
 ) -> Result<(), BridgeError> {
     let jtoplevel = get_java_toplevel!(toplevel);
@@ -172,6 +175,7 @@ pub fn toplevel_from_java_nullable<'local>(
     return Ok(Some(toplevel));
 }
 
+#[allow(unused)]
 pub fn toplevel_from_java<'local>(
     env: &mut Env<'local>,
     state: &mut WLCState,
@@ -181,8 +185,101 @@ pub fn toplevel_from_java<'local>(
         .ok_or(BridgeError::ToplevelNull)
 }
 
-pub fn new_popup(state: &mut WLCState, popup: &PopupSurface) {
+pub fn new_popup(_state: &mut WLCState, _popup: &PopupSurface) {
 }
 
-pub fn popup_destroyed(state: &mut WLCState, popup: &PopupSurface) {
+pub fn popup_destroyed(_state: &mut WLCState, _popup: &PopupSurface) {
+}
+
+pub fn toplevel_resize<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
+    instance: jlong,
+    jtoplevel: WLCToplevel<'local>,
+    width: jint,
+    height: jint,
+    interactive: jboolean,
+) -> Result<(), BridgeError> {
+    let instance = jptr_to_instance!(instance)?;
+    let toplevel = toplevel_from_java(env, &mut instance.state, &jtoplevel)?;
+
+    toplevel.with_pending_state(|state| {
+        state.size = Some(Size::new(width, height));
+        state.states.unset(xdg_toplevel::State::Maximized);
+        state.states.unset(xdg_toplevel::State::Fullscreen);
+        if interactive {
+            state.states.set(xdg_toplevel::State::Resizing);
+        } else {
+            state.states.unset(xdg_toplevel::State::Resizing);
+        }
+    });
+    jtoplevel.set_fullscreen(env, false)?;
+
+    toplevel.send_pending_configure();
+
+    Ok(())
+}
+
+pub fn toplevel_resize_ovr<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
+    instance: jlong,
+    jtoplevel: WLCToplevel<'local>,
+    width: jint,
+    height: jint,
+) -> Result<(), BridgeError> {
+    let instance = jptr_to_instance!(instance)?;
+    let toplevel = toplevel_from_java(env, &mut instance.state, &jtoplevel)?;
+
+    toplevel.with_pending_state(|state| {
+        state.size = Some(Size::new(width, height));
+        state.states.unset(xdg_toplevel::State::Resizing);
+    });
+
+    toplevel.send_pending_configure();
+
+    Ok(())
+}
+
+pub fn toplevel_maximize<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
+    instance: jlong,
+    jtoplevel: WLCToplevel<'local>,
+) -> Result<(), BridgeError> {
+    let instance = jptr_to_instance!(instance)?;
+    let toplevel = toplevel_from_java(env, &mut instance.state, &jtoplevel)?;
+
+    toplevel.with_pending_state(|state| {
+        if state.states.contains(xdg_toplevel::State::Fullscreen) {
+            return;
+        }
+        let output = &instance.state.output;
+        state.size = Some(output.bounds());
+        state.states.set(xdg_toplevel::State::Maximized);
+    });
+
+    toplevel.send_configure();
+    Ok(())
+}
+
+pub fn toplevel_fullscreen<'local>(
+    env: &mut Env<'local>,
+    _class: JClass<'local>,
+    instance: jlong,
+    jtoplevel: WLCToplevel<'local>,
+) -> Result<(), BridgeError> {
+    let instance = jptr_to_instance!(instance)?;
+    let toplevel = toplevel_from_java(env, &mut instance.state, &jtoplevel)?;
+
+    toplevel.with_pending_state(|state| {
+        let output = &instance.state.output;
+        state.size = Some(output.size());
+        state.states.set(xdg_toplevel::State::Fullscreen);
+    });
+
+    jtoplevel.set_fullscreen(env, true)?;
+
+    toplevel.send_configure();
+    Ok(())
 }

@@ -18,7 +18,7 @@ pub fn drm_device_by_path<'local>(
 }
 
 pub fn drm_device_by_major_minor<'local>(
-    env: &mut Env<'local>,
+    _env: &mut Env<'local>,
     _class: JClass<'local>,
     major: jint,
     minor: jint,
