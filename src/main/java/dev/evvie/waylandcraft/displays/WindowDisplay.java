@@ -116,7 +116,7 @@ public class WindowDisplay extends AbstractWindowDisplay {
 				continue;
 			}
 			
-			if(WaylandCraft.instance.bridge.inputRegionContains(surface, rel.x, rel.y)) {
+			if(surface.inputRegionContains(rel.x, rel.y)) {
 				hitSurface = surface;
 				localCoordsRelative = rel;
 				break;

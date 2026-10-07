@@ -255,6 +255,7 @@ public class WLCSurface {
 	}
 	
 	public native void sendFrame();
+	public native boolean inputRegionContains(double x, double y);
 	
 	// Surface-local dimensions of the source rectangle in a buffer
 	public static final record ViewportSource(double x, double y, double width, double height) {

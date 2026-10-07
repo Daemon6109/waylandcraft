@@ -378,7 +378,6 @@ public class WindowManagerScreen extends Screen {
 			float sx = (float) x - element.x;
 			float sy = (float) y - element.y;
 			
-//			for(WLCSurface surface = element.window.getSurfaceTreeLast(); surface != null; surface = surface.getPrevChild()) {
 			for(WLCSurface surface : element.window.getRootSurface().getInputTree()) {
 				float rx = sx - surface.xSubpos;
 				float ry = sy - surface.ySubpos;
@@ -392,7 +391,7 @@ public class WindowManagerScreen extends Screen {
 				
 				if(!surface.isAlive()) continue;
 				
-				if(wlc.bridge.inputRegionContains(surface, rx, ry)) {
+				if(surface.inputRegionContains(rx, ry)) {
 					return new HoveredSurface(surface, rx, ry);
 				}
 			}

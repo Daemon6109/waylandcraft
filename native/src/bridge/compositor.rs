@@ -11,7 +11,7 @@ use crate::{
 use jni::{
     Env,
     objects::{Global, JObjectArray},
-    sys::{jbyte, jint, jlong},
+    sys::{jbyte, jdouble, jint, jlong},
 };
 use smithay::{
     backend::allocator::Buffer,
@@ -20,7 +20,7 @@ use smithay::{
         protocol::wl_buffer::WlBuffer,
         protocol::wl_surface::WlSurface,
     },
-    utils::Size,
+    utils::{Logical, Point, Size},
     wayland::{
         compositor::{
             get_children, get_parent, is_sync_subsurface, with_states,
@@ -464,4 +464,30 @@ pub fn send_frame<'local>(
     });
 
     Ok(())
+}
+
+pub fn input_region_contains<'local>(
+    env: &mut Env<'local>,
+    jsurface: WLCSurface<'local>,
+    x: jdouble,
+    y: jdouble,
+) -> Result<bool, BridgeError> {
+    let surface = match surface_from_java_nullable(env, &jsurface)? {
+        Some(s) => s,
+        None => {
+            return Ok(false);
+        },
+    };
+
+    let point: Point<f64, Logical> = Point::new(x, y);
+
+    Ok(with_states(&surface, |data| {
+        let mut attr_guard = data.cached_state.get::<SurfaceAttributes>();
+        let attr = attr_guard.deref_mut().current();
+        if let Some(r) = &attr.input_region {
+            r.contains(point.to_i32_floor())
+        } else {
+            true
+        }
+    }))
 }

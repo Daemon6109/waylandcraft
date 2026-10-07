@@ -9,6 +9,7 @@ import java.util.LinkedList;
 import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.lwjgl.system.Platform;
 
 import com.mojang.blaze3d.opengl.GlDevice;
@@ -582,61 +583,57 @@ public class WaylandCraftBridge {
 	}
 	
 	public @Nullable String getX11Display() {
-//		return x11Display(this.instance);
-		return null;
+		return x11Display(this.instance);
 	}
 	
-	public boolean inputRegionContains(WLCSurface surface, double x, double y) {
-//		return checkInputRegion(surface.getHandle(), x, y);
-		return false;
-	}
-	
+	// Create pointer motion event
 	public void sendMotion(double x, double y) {
-//		pointerMotion(instance, x, y);
+		pointerMotion(instance, x, y);
 	}
 	
-	public void sendMotionRefocus(WLCSurface surface, double x, double y) {
-//		pointerMotionFocus(instance, surface.getHandle(), x, y);
+	// Create pointer motion event
+	public void sendMotionRefocus(@Nullable WLCSurface surface, double x, double y) {
+		pointerMotionFocus(instance, surface, x, y);
 	}
 	
+	// Send relative pointer motion to surface with pointer focus
 	public void sendRelativeMotion(double dx, double dy) {
-//		pointerRelMotion(instance, dx, dy);
+		pointerRelMotion(instance, dx, dy);
 	}
 	
+	// Remove pointer focus from all surfaces
 	public void sendMotionOutside() {
-//		pointerLeave(instance);
+		pointerLeave(instance);
 	}
 	
-	public boolean maybeLockPointer(WLCSurface surface) {
-//		return maybePointerLock(instance, surface.getHandle());
-		return false;
+	// Check if there is an active pointer lock on the surface and lock the pointer if yes
+	public boolean maybeLockPointer(@NonNull WLCSurface surface) {
+		return maybePointerLock(instance, surface);
 	}
 	
+	// Drop an active pointer lock (if any)
 	public void unlockPointer() {
-//		pointerUnlock(instance);
+		pointerUnlock(instance);
 	}
 	
+	// Create pointer button event. `button` has to be the linux button code, state is 1 for pressed, 0 for released
 	public int sendButton(int button, int state) {
-//		return pointerButton(instance, button, state);
-		return -1;
+		return pointerButton(instance, button, state);
 	}
 	
+	// Create pointer axis event. `axis` is the scroll axis (0 for vertical, 1 for horizontal)
 	public void sendScroll(int axis, double value) {
-//		pointerAxis(instance, axis, value);
+		pointerAxis(instance, axis, value);
 	}
 	
+	// Get active cursor shape
 	public CursorShape getCursorShape() {
-//		return CursorShape.fromId(cursorShape(instance));
-		return CursorShape.DEFAULT;
+		return CursorShape.fromId(cursorShape(instance));
 	}
 	
+	// Set keyboard focus to a toplevel
 	public void focusSurface(@Nullable WLCToplevel toplevel) {
-//		long handle = 0;
-//		if(toplevel != null) {
-//			handle = toplevel.getHandle();
-//		}
-		
-//		keyboardFocus(instance, handle);
+		keyboardFocus(instance, toplevel);
 		
 		// Make toplevel most recently focused
 		if(toplevel != null) {
@@ -645,12 +642,14 @@ public class WaylandCraftBridge {
 		}
 	}
 	
+	// Mark keyboard as active, forward any pressed modifiers and pressed keys, etc. to the clients
 	public void activateKeyboard() {
-//		keyboardActivate(instance);
+		keyboardActivate(instance);
 	}
 	
+	// Mark keyboard as inactive, don't forward any keyboard state to the clients
 	public void deactivateKeyboard() {
-//		keyboardDeactivate(instance);
+		keyboardDeactivate(instance);
 	}
 	
 	private void updateFocusOrder() {
@@ -673,15 +672,16 @@ public class WaylandCraftBridge {
 	}
 	
 	public void pressKey(int scancode) {
-//		keyboardInput(instance, scancode, 1);
+		keyboardInput(instance, scancode, 1);
 	}
 	
 	public void releaseKey(int scancode) {
-//		keyboardInput(instance, scancode, 0);
+		keyboardInput(instance, scancode, 0);
 	}
 	
+	// Update internal key state
 	public void internalKeyUpdate(int scancode, boolean pressed) {
-//		keyboardUpdate(instance, scancode, pressed);
+		keyboardUpdate(instance, scancode, pressed);
 	}
 	
 	public void resizeToplevelInteractive(WLCToplevel toplevel, int width, int height) {
@@ -764,18 +764,8 @@ public class WaylandCraftBridge {
 //		setPreferredTerminal(instance, cmd);
 	}
 	
-	public void setKeymapDefault() {
-//		setKeymapDefault(instance);
-	}
-	
-	public String exportKeymap() {
-//		return exportKeymap(instance);
-		return "";
-	}
-	
 	public boolean setKeymapFromStr(String keymap) {
-//		return setKeymapFromStr(instance, keymap);
-		return true;
+		return setKeymapFromStr(instance, keymap);
 	}
 	
 	public Integer checkDndRequest() {
@@ -802,30 +792,45 @@ public class WaylandCraftBridge {
 	
 	public static record ResizeRequest(int serial, int edges) {}
 	
+	/* Additional bridge native functions
+	 * 
+	 * Some native methods are directly on various objects like WLCSurface#checkInputRegion, ...
+	 * Some functionality is implemented directly in native code and calls java code
+	 * The remaining stuff is here:
+	 */
+	
+	/* General bridge functions */
 	private static native WaylandCraftBridge init(@Nullable DmabufFeedbackData dmabufFeedbackData);
 	private static native void shutdown(long instance);
 	private static native void dispatchClients(long instance);
 	private static native void flushDisplay(long instance);
 	private static native String socket(long instance);
+	private static native String x11Display(long instance);
 	
+	/* Direct Rendering Manager functionality */
 	private static native long drmDeviceByPath(String path);
 	private static native long drmDeviceByMajorMinor(int major, int minor);
 	
+	/* Seat functionality */
+	private static native void pointerMotion(long instance, double x, double y);
+	private static native void pointerMotionFocus(long instance, @Nullable WLCSurface surface, double x, double y);
+	private static native void pointerRelMotion(long instance, double dx, double dy);
+	private static native boolean maybePointerLock(long instance, @NonNull WLCSurface surface);
+	private static native void pointerUnlock(long instance);
+	private static native void pointerLeave(long instance);
+	private static native int pointerButton(long instance, int button, int state);
+	private static native void pointerAxis(long instance, int axis, double value);
+	private static native int cursorShape(long instance);
+	private static native void keyboardFocus(long instance, @Nullable WLCToplevel toplevel);
+	private static native void keyboardActivate(long instance);
+	private static native void keyboardDeactivate(long instance);
+	private static native void keyboardInput(long instance, int scancode, int action);
+	private static native void keyboardUpdate(long instance, int scancode, boolean pressed);
+	private static native boolean setKeymapFromStr(long instance, String keymap);
+	
+	
+	// TODO: Implement the following stuff (or alternatives to them):
 	/*
-	private static native long init(@Nullable DmabufFeedbackData dmabufFeedbackData);
-	private static native void shutdown(long instance);
-	private static native void dispatchClients(long instance);
-	private static native void flushDisplay(long instance);
-	private static native String socket(long instance);
-	private static native String x11Display(long instance);
-	private static native void sendFrame(long surfaceHandle);
-	
-	private static native void updateSurfaceData(long instance, WLCSurface surface);
-	
-	private static native long[] toplevels(long instance);
-	private static native long toplevelSurface(long instance, long topLevelHandle);
-	private static native String toplevelTitle(long topLevelHandle);
-	private static native String toplevelAppID(long topLevelHandle);
 	// Resize toplevel
 	private static native void toplevelResize(long topLevelHandle, int width, int height, boolean interactive);
 	// Resize toplevel override, keep maximized and fullscreen state, stop interactive resize
@@ -862,61 +867,6 @@ public class WaylandCraftBridge {
 	// Returns two-element list containing x,y
 	private static native int[] popupOffset(long popupHandle);
 	
-	// Query the xdg_surface window geometry of a toplevel or popup.
-	// handle should be the handle to the root WLCSurface
-	// Returns four-element array containing x,y,width,height which could be null
-	private static native int[] surfaceXDGGeometry(long surfaceHandle);
-	
-	private static native long[] dmabufs(long instance);
-	
-	// Check if there are new dmabufs waiting to be imported. If yes, importDmabuf() will be called
-	private native void checkImportDmabuf(long instance);
-	
-	// Updates the surface tree given by the root surface
-	// This changes the doubly linked list of the WLCSurfaces.
-	// The returned surface is the last (most deeply nested) child
-	private native WLCSurface updateSurfaceTree(long instance, WLCSurface root);
-	
-	// Check if point in surface input region
-	private static native boolean checkInputRegion(long surfaceHandle, double x, double y);
-	
-	// Create pointer motion event
-	private static native void pointerMotion(long instance, double x, double y);
-	
-	// Create pointer motion event
-	private static native void pointerMotionFocus(long instance, long surfaceHandle, double x, double y);
-	
-	// Send relative pointer motion to surface with pointer focus
-	private static native void pointerRelMotion(long instance, double dx, double dy);
-	
-	private static native boolean maybePointerLock(long instance, long surfaceHandle);
-	
-	private static native void pointerUnlock(long instance);
-	
-	// Remove pointer focus from all surfaces
-	private static native void pointerLeave(long instance);
-	
-	// Create pointer button event. `button` has to be the linux button code, state is 1 for pressed, 0 for released
-	private static native int pointerButton(long instance, int button, int state);
-	
-	// Create pointer axis event. `axis` is the scroll axis (0 for vertical, 1 for horizontal)
-	private static native void pointerAxis(long instance, int axis, double value);
-	
-	// Get active cursor image
-	private static native int cursorShape(long instance);
-	
-	// Set keyboard focus to a wayland surface. The handle may be 0 to unfocus any surfaces
-	private static native void keyboardFocus(long instance, long surfaceHandle);
-	
-	private static native void keyboardActivate(long instance);
-	private static native void keyboardDeactivate(long instance);
-	
-	// Keyboard input. scancode is the raw keycode. action: 0 is released, 1 is pressed.
-	private static native void keyboardInput(long instance, int scancode, int action);
-	
-	// Update internal key state
-	private static native void keyboardUpdate(long instance, int scancode, boolean pressed);
-	
 	private static native int[] outputSize(long instance);
 	private static native int[] outputBounds(long instance);
 	
@@ -926,10 +876,6 @@ public class WaylandCraftBridge {
 	// Update virtual output maximum window bounds
 	private static native void outputSetBounds(long instance, int width, int height);
 	
-	private static native void freeSurface(long instance, long surfaceHandle);
-	private static native void freeToplevel(long instance, long toplevelHandle);
-	private static native void freePopup(long instance, long popupHandle);
-	
 	private static native RawDesktopEntry loadDesktopEntry(long instance, String path);
 	private static native RawDesktopEntry[] loadDesktopEntries(long instance);
 	
@@ -938,19 +884,12 @@ public class WaylandCraftBridge {
 	private static native boolean execApp(long instance, String appId);
 	private static native void setPreferredTerminal(long instance, String cmd);
 	
-	private static native void setKeymapDefault(long instance);
-	private static native String exportKeymap(long instance);
-	private static native boolean setKeymapFromStr(long instance, String keymap);
-	
 	private static native int[] checkDndRequest(long instance);
 	private static native boolean checkDndActive(long instance);
 	private static native void dndCancel(long instance);
 	private static native void dndDrop(long instance);
 	private static native void dndMotion(long instance, long surfaceHandle, double x, double y);
 	private static native long dndIcon(long instance);
-	
-	private static native long drmDeviceByPath(String path);
-	private static native long drmDeviceByMajorMinor(int major, int minor);
 	*/
 	
 }
