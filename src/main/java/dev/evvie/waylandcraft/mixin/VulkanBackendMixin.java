@@ -9,9 +9,9 @@ import org.spongepowered.asm.mixin.injection.At;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.mojang.blaze3d.vulkan.VulkanBackend;
-import com.mojang.blaze3d.vulkan.VulkanPhysicalDevice;
-import com.mojang.blaze3d.vulkan.init.VulkanFeature;
+import com.mojang.renderpearl.backend.vulkan.VulkanBackend;
+import com.mojang.renderpearl.backend.vulkan.VulkanPhysicalDevice;
+import com.mojang.renderpearl.backend.vulkan.init.VulkanFeature;
 
 import dev.evvie.waylandcraft.WaylandCraftCommon;
 import dev.evvie.waylandcraft.vulkan.VulkanHelper;

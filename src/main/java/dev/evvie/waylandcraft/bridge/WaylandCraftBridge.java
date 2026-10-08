@@ -14,10 +14,10 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.system.Platform;
 
-import com.mojang.blaze3d.opengl.GlDevice;
-import com.mojang.blaze3d.systems.GpuDeviceBackend;
+import com.mojang.renderpearl.backend.opengl.GlDevice;
+import com.mojang.renderpearl.backend.api.GpuDeviceBackend;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vulkan.VulkanDevice;
+import com.mojang.renderpearl.backend.vulkan.VulkanDevice;
 
 import dev.evvie.waylandcraft.WaylandCraftCommon;
 import dev.evvie.waylandcraft.bridge.WLCAbstractWindow.SurfaceGeometry;

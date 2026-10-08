@@ -29,7 +29,7 @@ import org.lwjgl.vulkan.VkPhysicalDeviceProperties2;
 import org.lwjgl.vulkan.VkSubresourceLayout;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vulkan.VulkanDevice;
+import com.mojang.renderpearl.backend.vulkan.VulkanDevice;
 
 import dev.evvie.waylandcraft.WaylandCraftCommon;
 import dev.evvie.waylandcraft.bridge.dmabuf.Dmabuf;
