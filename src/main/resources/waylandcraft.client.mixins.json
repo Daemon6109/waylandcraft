@@ -10,14 +10,17 @@
 		"ItemInHandRendererMixin",
 		"IItemInHandRendererMixin",
 		"MinecraftMixin",
-		"GuiMixin",
+		"HudMixin",
 		"NativeImageMixin",
 		"ItemFrameRendererMixin",
 		"ItemFrameRenderStateMixin",
 		"IGlTextureMixin",
 		"FramerateLimitTrackerMixin",
 		"TitleScreenMixin",
-		"PauseScreenMixin"
+		"PauseScreenMixin",
+		"VulkanGpuTextureMixin",
+		"VulkanGpuTextureViewMixin",
+		"VulkanBackendMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

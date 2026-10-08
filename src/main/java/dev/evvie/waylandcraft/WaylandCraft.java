@@ -48,6 +48,7 @@ import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
@@ -136,7 +137,7 @@ public class WaylandCraft implements ClientModInitializer {
 		}
 		
 		LevelRenderEvents.COLLECT_SUBMITS.register(this::renderWorld);
-		LevelRenderEvents.END_EXTRACTION.register(this::updateWorld);
+		LevelExtractionEvents.END_EXTRACTION.register(this::updateWorld);
 		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 		ClientPlayConnectionEvents.JOIN.register(this::onClientJoin);
 		ClientPlayConnectionEvents.DISCONNECT.register(this::onClientDisconnect);
@@ -184,7 +185,30 @@ public class WaylandCraft implements ClientModInitializer {
 	public void updatePointer() {
 		if(bridge == null) return;
 		
-		Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+		displays.removeIf((d) -> !d.isValid());
+		displays.forEach((d) -> d.updateGeometry());
+		
+		for(WLCPopup popup : bridge.getMappedPopups()) {
+			anchorToParent(popup);
+		}
+		
+		updateDisplayRequests();
+		
+		itemManager.giveItemsIfMissing(bridge.getNewToplevels());
+		
+		boolean inWMScreen = Minecraft.getInstance().gui.screen() instanceof WindowManagerScreen;
+		
+		// Make sure the toplevels are focused in their respective order and being refocused when a toplevel disappears
+		if(!inWMScreen) {
+			WLCToplevel focus = bridge.getMostToLeastRecentFocus()
+					.filter((t) -> hasDisplayFor(t))
+					.findFirst()
+					.orElse(null);
+			
+			bridge.focusSurface(focus);
+		}
+		
+		Camera camera = ctx.camera();
 		processPointerMotion(camera);
 		
 		if(Minecraft.getInstance().player == null || !Minecraft.getInstance().player.isUsingItem()) playerUsingWindowItem = false;
@@ -279,10 +303,10 @@ public class WaylandCraft implements ClientModInitializer {
 		if(keyOpenScreen.consumeClick()) {
 			disableKeyboardCapture();
 			pointerGrabs.releaseAll();
-			minecraft.setScreen(new WindowManagerScreen(WaylandCraft.instance));
+			minecraft.setScreenAndShow(new WindowManagerScreen(WaylandCraft.instance));
 		}
 		else if(keyOpenAppLauncher.consumeClick()) {
-			minecraft.setScreen(new AppLauncherScreen(WaylandCraft.instance));
+			minecraft.setScreenAndShow(new AppLauncherScreen(WaylandCraft.instance));
 		}
 		else if(keyCaptureKeyboard.consumeClick()) {
 			enableKeyboardCapture(false);
@@ -290,8 +314,8 @@ public class WaylandCraft implements ClientModInitializer {
 	}
 	
 	private void onClientJoin(ClientPacketListener listener, PacketSender sender, Minecraft minecraft) {
-		minecraft.getChatListener().handleSystemMessage(Component.literal("Wayland compositor running on " + waylandSocket), false);
-		if(x11Display != null) minecraft.getChatListener().handleSystemMessage(Component.literal("xwayland-satellite running on " + x11Display), false);
+		minecraft.gui.chatListener().handleSystemMessage(Component.literal("Wayland compositor running on " + waylandSocket), false);
+		if(x11Display != null) minecraft.gui.chatListener().handleSystemMessage(Component.literal("xwayland-satellite running on " + x11Display), false);
 		itemManager.giveItemsIfMissing(bridge.getMappedToplevels());
 	}
 	
@@ -494,10 +518,10 @@ public class WaylandCraft implements ClientModInitializer {
 		this.hoveredDisplay = null;
 		this.overridePickBlock = false;
 		
-		if(Minecraft.getInstance().screen instanceof WindowManagerScreen) {
+		if(Minecraft.getInstance().gui.screen() instanceof WindowManagerScreen) {
 			return;
 		}
-		else if(Minecraft.getInstance().screen != null) {
+		else if(Minecraft.getInstance().gui.screen() != null) {
 			pointerGrabs.releaseAll();
 			bridge.sendMotionOutside();
 			return;
