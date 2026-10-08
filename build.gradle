@@ -68,7 +68,23 @@ sourceSets {
 			include "dev/evvie/waylandcraft/utils/ServerWaylandCraftUtils.java"
 		}
 	}
-	client.java.srcDir "src/main/java"
+	client {
+		java {
+			srcDir "src/main/java"
+			// These classes are compiled by the dedicated-server source set too.
+			// Excluding them here prevents Gradle 9 from writing duplicate entries
+			// when the two environment jars are assembled.
+			exclude "dev/evvie/waylandcraft/WaylandCraftCommon.java"
+			exclude "dev/evvie/waylandcraft/network/**"
+			exclude "dev/evvie/waylandcraft/item/WindowHandle.java"
+			exclude "dev/evvie/waylandcraft/item/WindowItem.java"
+			exclude "dev/evvie/waylandcraft/item/WindowItemInteractionProvider.java"
+			exclude "dev/evvie/waylandcraft/item/ServerItemManager.java"
+			exclude "dev/evvie/waylandcraft/mixin/ServerPlayerMixin.java"
+			exclude "dev/evvie/waylandcraft/utils/IMyServerPlayer.java"
+			exclude "dev/evvie/waylandcraft/utils/ServerWaylandCraftUtils.java"
+		}
+	}
 }
 
 processResources {
