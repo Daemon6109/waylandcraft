@@ -16,6 +16,7 @@ import org.lwjgl.system.Platform;
 
 import com.mojang.renderpearl.backend.opengl.GlDevice;
 import com.mojang.renderpearl.backend.api.GpuDeviceBackend;
+import com.mojang.renderpearl.frontend.FrontendGpuDevice;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.backend.vulkan.VulkanDevice;
 
@@ -131,7 +132,7 @@ public class WaylandCraftBridge {
 	}
 	
 	private static DmabufFeedbackData initBackend() {
-		GpuDeviceBackend deviceBackend = RenderSystem.getDevice().backend;
+		GpuDeviceBackend deviceBackend = ((FrontendGpuDevice) RenderSystem.getDevice()).backend;
 		if(deviceBackend instanceof GlDevice) {
 			return initBackendEGL();
 		}

@@ -30,6 +30,7 @@ import org.lwjgl.vulkan.VkSubresourceLayout;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.renderpearl.backend.vulkan.VulkanDevice;
+import com.mojang.renderpearl.frontend.FrontendGpuDevice;
 
 import dev.evvie.waylandcraft.WaylandCraftCommon;
 import dev.evvie.waylandcraft.bridge.dmabuf.Dmabuf;
@@ -55,7 +56,7 @@ public class VulkanHelper {
 	public static record DrmNodeId(int major, int minor) {}
 	
 	public static VulkanDevice getVulkanDevice() {
-		return (VulkanDevice) RenderSystem.getDevice().backend;
+		return (VulkanDevice) ((FrontendGpuDevice) RenderSystem.getDevice()).backend;
 	}
 	
 	public static DrmNodeId getRenderNodeId(VulkanDevice device) {
