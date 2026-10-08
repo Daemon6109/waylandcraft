@@ -40,6 +40,37 @@ dependencies {
 	compileOnly "maven.modrinth:iris:${project.iris_version}"
 }
 
+// Minecraft 26.3 ships separate client and server jars. Keep the dedicated-server
+// code in `main`, while compiling the existing client implementation in the
+// client source set until it can be physically reorganized.
+loom {
+	 splitEnvironmentSourceSets()
+
+	mods {
+		"waylandcraft" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+sourceSets {
+	main {
+		java {
+			include "dev/evvie/waylandcraft/WaylandCraftCommon.java"
+			include "dev/evvie/waylandcraft/network/**"
+			include "dev/evvie/waylandcraft/item/WindowHandle.java"
+			include "dev/evvie/waylandcraft/item/WindowItem.java"
+			include "dev/evvie/waylandcraft/item/WindowItemInteractionProvider.java"
+			include "dev/evvie/waylandcraft/item/ServerItemManager.java"
+			include "dev/evvie/waylandcraft/mixin/ServerPlayerMixin.java"
+			include "dev/evvie/waylandcraft/utils/IMyServerPlayer.java"
+			include "dev/evvie/waylandcraft/utils/ServerWaylandCraftUtils.java"
+		}
+	}
+	client.java.srcDir "src/main/java"
+}
+
 processResources {
 	inputs.property "version", project.version
 
