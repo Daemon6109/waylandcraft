@@ -468,10 +468,20 @@ public class WaylandCraft implements ClientModInitializer {
 	}
 	
 	public void disablePointerCapture() {
-		destroyPointerOverlay();
-		if(pointerCapture == null) return;
-		if(pointerCapture instanceof LockedPointerCapture) bridge.unlockPointer();
+		PointerCapture capture = pointerCapture;
 		pointerCapture = null;
+
+		if(capture != null) {
+			// Capture can end because of Escape, a screen change, or an invalid
+			// surface. In all three cases the native client still needs releases
+			// for every press it already received, otherwise its input gets stuck.
+			for(int button : capture.pressedButtons) {
+				bridge.sendButton(correctButtonCode(button), 0);
+			}
+			if(capture instanceof LockedPointerCapture) bridge.unlockPointer();
+		}
+
+		destroyPointerOverlay();
 	}
 	
 	public void destroyPointerOverlay() {
