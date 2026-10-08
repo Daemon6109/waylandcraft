@@ -614,11 +614,11 @@ public class WaylandCraft implements ClientModInitializer {
 		
 		if(pointerCapture != null) {
 			if(action == 1 && !pointerCapture.pressedButtons.contains(button)) {
-				bridge.sendButton(0x110 + button, 1);
+				bridge.sendButton(correctButtonCode(button), 1);
 				pointerCapture.pressedButtons.add(button);
 			}
 			else if(action == 0 && pointerCapture.pressedButtons.contains(button)) {
-				bridge.sendButton(0x110 + button, 0);
+				bridge.sendButton(correctButtonCode(button), 0);
 				pointerCapture.pressedButtons.remove(button);
 			}
 			else if(action == 0) {
@@ -720,7 +720,8 @@ public class WaylandCraft implements ClientModInitializer {
 	public boolean onKeyPress(long windowHandle, int key, int scancode, int action, int modifiers) {
 		if(bridge == null) return false;
 		
-		if(key == InputConstants.KEY_Q && modifiers == InputConstants.MOD_ALT) {
+		int relevantModifiers = modifiers & ~(InputConstants.MOD_CAPS_LOCK | InputConstants.MOD_NUM_LOCK);
+		if(key == InputConstants.KEY_Q && (relevantModifiers & InputConstants.MOD_ALT) != 0 && (relevantModifiers & ~InputConstants.MOD_ALT) == 0) {
 			if(action == 0) return true;
 			
 			if(keyboardCaptureMode != KeyboardCaptureMode.HARD_CAPTURE) {
@@ -753,6 +754,13 @@ public class WaylandCraft implements ClientModInitializer {
 		// SDL exposes Linux scancodes directly; GLFW's Wayland-specific +8 offset
 		// is no longer applicable in Minecraft 26.3.
 		return scancode;
+	}
+
+	/** Translate SDL's 1-based mouse button order to Linux evdev BTN_* codes. */
+	public static int correctButtonCode(int sdlButton) {
+		if(sdlButton == 2) return 0x112; // BTN_MIDDLE
+		if(sdlButton == 3) return 0x111; // BTN_RIGHT
+		return 0x110 + (sdlButton - 1); // BTN_LEFT, BTN_SIDE, BTN_EXTRA, ...
 	}
 	
 	private void anchorToParent(WLCPopup popup) {
