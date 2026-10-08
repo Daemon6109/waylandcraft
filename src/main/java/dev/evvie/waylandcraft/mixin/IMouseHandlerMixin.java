@@ -9,6 +9,6 @@ import net.minecraft.client.MouseHandler;
 public interface IMouseHandlerMixin {
 	
 	@Invoker
-	public void invokeOnMove(long l, double d, double e);
+	public void invokeOnMove(long windowHandle, double x, double y, double deltaX, double deltaY);
 	
 }

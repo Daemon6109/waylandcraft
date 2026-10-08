@@ -248,7 +248,10 @@ public class WindowManagerScreen extends Screen {
 		
 		MouseHandler mouseHandler = Minecraft.getInstance().mouseHandler;
 		mouseHandler.setIgnoreFirstMove(); // don't accumulate any movement in accumulatedDX,DY
-		((IMouseHandlerMixin) mouseHandler).invokeOnMove(window, mouseX[0], mouseY[0]);
+		// 26.3 passes explicit motion deltas. The preceding setIgnoreFirstMove()
+		// makes this call update only the remembered cursor position, so zero
+		// deltas are intentional.
+		((IMouseHandlerMixin) mouseHandler).invokeOnMove(window, mouseX[0], mouseY[0], 0.0, 0.0);
 		/* </HACK> */
 		
 		resizeMode = false;
