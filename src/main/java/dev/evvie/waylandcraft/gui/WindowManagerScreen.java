@@ -185,7 +185,10 @@ public class WindowManagerScreen extends Screen {
 	private void onGrabPressed(Button button) {
 		if(focused == null) return;
 		
-		wlc.pointerGrabs.startExclusive(new WindowGrab(wlc.getOrCreateDisplay(focused), 0));
+		// Minecraft 26.3 reports SDL mouse buttons: left is 1, not GLFW's old 0.
+		// The release path receives the SDL value, so using 0 here left a window
+		// permanently attached to the cursor after grabbing it from this screen.
+		wlc.pointerGrabs.startExclusive(new WindowGrab(wlc.getOrCreateDisplay(focused), 1));
 		this.onClose();
 	}
 	
