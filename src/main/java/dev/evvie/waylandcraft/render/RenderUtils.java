@@ -43,6 +43,7 @@ public class RenderUtils {
 			.withVertexShader(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "core/rendertype_window"))
 			.withFragmentShader(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "core/rendertype_window"))
 			.withBindGroupLayout(BindGroupLayouts.PROJECTION)
+			.withBindGroupLayout(BindGroupLayouts.DYNAMIC_TRANSFORMS)
 			.withBindGroupLayout(BindGroupLayouts.SAMPLER0)
 			.withDepthStencilState(DepthStencilState.DEFAULT)
 			.withVertexBinding(0, DefaultVertexFormat.POSITION_TEX)
@@ -52,6 +53,7 @@ public class RenderUtils {
 	private static final RenderPipeline WINDOW_CUTOUT_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
 			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_cutout"))
 			.withShaderDefine("ALPHA_CUTOUT")
+			.withColorTargetState(ColorTargetState.DEFAULT)
 			.build();
 	
 	private static final RenderPipeline WINDOW_TRANSLUCENT_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
@@ -63,6 +65,7 @@ public class RenderUtils {
 			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_cutout"))
 			.withShaderDefine("ALPHA_CUTOUT")
 			.withShaderDefine("RGSS")
+			.withColorTargetState(ColorTargetState.DEFAULT)
 			.build();
 	
 	private static final RenderPipeline WINDOW_TRANSLUCENT_ANTIALIASING_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
@@ -75,6 +78,7 @@ public class RenderUtils {
 			.withLocation(Identifier.fromNamespaceAndPath(WaylandCraftCommon.MOD_ID, "pipeline/window_cutout_background"))
 			.withShaderDefine("ALPHA_CUTOUT")
 			.withShaderDefine("NO_COLOR")
+			.withColorTargetState(ColorTargetState.DEFAULT)
 			.build();
 	
 	private static final RenderPipeline WINDOW_TRANSLUCENT_BACKGROUND_PIPELINE = RenderPipeline.builder(WINDOW_PIPELINE_SNIPPET)
