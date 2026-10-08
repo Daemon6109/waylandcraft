@@ -1008,7 +1008,7 @@ fn sync_dmabuf_planes<'local>(
     handle: jlong,
     end: jboolean,
 ) -> Result<(), BridgeError> {
-    let instance = jptr_to_instance!(instance, "sync_dmabuf_planes")?;
+    let instance = jptr_to_instance!(instance)?;
     let dmabuf: Option<Dmabuf> = get_element_by_handle(
         &mut instance.bridge.dmabufs,
         handle
@@ -1041,7 +1041,7 @@ fn release_buffer<'local>(
     instance: jlong,
     handle: jlong,
 ) -> Result<(), BridgeError> {
-    let instance = jptr_to_instance!(instance, "release_buffer")?;
+    let instance = jptr_to_instance!(instance)?;
     let buffer = pop_element(&mut instance.bridge.pending_release, handle);
     buffer.release();
     Ok(())
@@ -1052,7 +1052,7 @@ fn check_import_dmabuf<'local>(
     this: WaylandCraftBridge<'local>,
     instance: jlong,
 ) -> Result<(), BridgeError> {
-    let instance = jptr_to_instance!(instance, "check_import_dmabuf")?;
+    let instance = jptr_to_instance!(instance)?;
     let (dmabuf, notif) = match instance.state.pending_dmabuf_imports.pop() {
         Some(t) => t,
         None => { return Ok(()) }
