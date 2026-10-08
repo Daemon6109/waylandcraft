@@ -37,6 +37,9 @@ import dev.evvie.waylandcraft.bridge.WLCSurface.ViewportSource;
 import dev.evvie.waylandcraft.displays.FramebufferRenderable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BindGroupLayouts;
+import net.minecraft.client.renderer.DynamicGpuDataStorage;
+import net.minecraft.client.renderer.DynamicGpuDataStorage.DynamicGpuData;
+import net.minecraft.client.renderer.DynamicGpuDataStorageMapped;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
@@ -83,6 +86,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		.build()
 	);
 	
+	private static DynamicGpuDataStorage<WindowInfoUniform> uniformStorage = null;
 	private static boolean debugDamage = false;
 	
 	public final WLCSurface surfaceTree;
@@ -101,8 +105,13 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	}
 	
 	public static void endFrame() {
-		// DynamicUniformStorage was removed in 26.3. Uniform buffers are now
-		// ordinary per-frame GPU buffers and are released after the frame below.
+		if(uniformStorage != null) uniformStorage.endFrame();
+	}
+
+	private static void ensureUniformStorage() {
+		if(uniformStorage == null) {
+			uniformStorage = new DynamicGpuDataStorageMapped<WindowInfoUniform>("window framebuffer", WindowInfoUniform.SIZE, GpuBuffer.USAGE_UNIFORM, 2);
+		}
 	}
 	
 	private void updateTarget() {
@@ -156,6 +165,13 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	public void render() {
 		updateTarget();
 		if(target == null || tempTarget == null) return;
+
+		try {
+			ensureUniformStorage();
+		} catch(RuntimeException e) {
+			WaylandCraftCommon.LOGGER.warn("Failed to allocate window framebuffer uniform storage, skipping this frame", e);
+			return;
+		}
 		
 		PoseStack poseStack = new PoseStack();
 		poseStack.translate(-1.0, -1.0, 0.0);
@@ -167,8 +183,8 @@ public class WindowFramebuffer implements FramebufferRenderable {
 			if(draw != null) elements.add(draw.compile());
 		}
 		
-		GpuBuffer alphaUniforms = createUniformBuffer(poseStack.last().pose(), true);
-		GpuBuffer opaqueUniforms = createUniformBuffer(poseStack.last().pose(), false);
+		GpuBufferSlice alphaUniforms = uniformStorage.writeData(new WindowInfoUniform(poseStack.last().pose(), true));
+		GpuBufferSlice opaqueUniforms = uniformStorage.writeData(new WindowInfoUniform(poseStack.last().pose(), false));
 		
 		try {
 			try(RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "window framebuffer", tempTarget.getColorTextureView(), Optional.of(new Vector4f(0, 0, 0, 0)))) {
@@ -195,13 +211,9 @@ public class WindowFramebuffer implements FramebufferRenderable {
 			pass.setUniform("Sampler0", tempTarget.getColorTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
 			pass.draw(3, 1, 0, 0);
 		}
-		finally {
-			alphaUniforms.close();
-			opaqueUniforms.close();
-		}
 	}
 	
-	private void drawDebugDamage(GpuBuffer opaqueUniforms) {
+	private void drawDebugDamage(GpuBufferSlice opaqueUniforms) {
 		ArrayList<CompiledBufferDraw> damageElements = new ArrayList<>();
 		for(WLCSurface surface = surfaceTree; surface != null; surface = surface.getNextChild()) {
 			int sx = xoff + surface.xSubpos;
@@ -349,17 +361,11 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		
 	}
 	
-	private static GpuBuffer createUniformBuffer(Matrix4fc mat, boolean alpha) {
-		ByteBuffer bytes = ByteBuffer.allocateDirect(WindowInfoUniform.SIZE);
-		new WindowInfoUniform(mat, alpha).write(bytes);
-		bytes.flip();
-		return RenderSystem.getDevice().createBuffer(() -> "waylandcraft window uniform", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST, bytes);
-	}
-
-	private static record WindowInfoUniform(Matrix4fc mat, boolean alpha) {
+	private static record WindowInfoUniform(Matrix4fc mat, boolean alpha) implements DynamicGpuData {
 		
 		public static final int SIZE = new Std140SizeCalculator().putMat4f().putFloat().get();
 		
+		@Override
 		public void write(ByteBuffer byteBuffer) {
 			Std140Builder.intoBuffer(byteBuffer).putMat4f(mat).putFloat(alpha ? 0.0f : 1.0f);
 		}
