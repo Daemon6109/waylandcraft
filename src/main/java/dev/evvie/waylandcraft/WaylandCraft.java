@@ -751,9 +751,33 @@ public class WaylandCraft implements ClientModInitializer {
 	}
 	
 	public static int correctScancode(int scancode) {
-		// SDL exposes Linux scancodes directly; GLFW's Wayland-specific +8 offset
-		// is no longer applicable in Minecraft 26.3.
-		return scancode;
+		// SDL scancodes are USB-HID values; the embedded compositor needs XKB
+		// keycodes (Linux evdev values plus 8). The common keyboard range is
+		// mapped here from SDL's Linux scancode table.
+		final int[] common = {
+			-1, -1, -1, -1,
+			30, 48, 46, 32, 18, 33, 34, 35, 23, 36, 37, 38, 50, 49, 24, 25, 16, 19, 31, 20, 22, 47, 17, 45, 21, 44,
+			2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+			28, 1, 14, 15, 57, 12, 13, 26, 27, 43, -1, 39, 40, 41, 51, 52, 53, 58,
+			59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 87, 88,
+			210, 70, 119, 110, 102, 104, 111, 107, 109, 106, 105, 108, 103,
+			69, 98, 55, 74, 78, 96, 79, 80, 81, 75, 76, 77, 71, 72, 73, 82, 83, 86, 127, 116, 117
+		};
+		int evdev = scancode >= 0 && scancode < common.length ? common[scancode] : -1;
+		if(evdev < 0) {
+			evdev = switch(scancode) {
+				case 224 -> 29;  // left control
+				case 225 -> 42;  // left shift
+				case 226 -> 56;  // left alt
+				case 227 -> 125; // left super
+				case 228 -> 97;  // right control
+				case 229 -> 54;  // right shift
+				case 230 -> 100; // right alt
+				case 231 -> 126; // right super
+				default -> scancode;
+			};
+		}
+		return evdev + 8;
 	}
 
 	/** Translate SDL's 1-based mouse button order to Linux evdev BTN_* codes. */
