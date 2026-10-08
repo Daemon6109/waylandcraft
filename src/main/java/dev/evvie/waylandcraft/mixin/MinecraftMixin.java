@@ -17,12 +17,14 @@ import net.minecraft.world.phys.Vec3;
 @Mixin(Minecraft.class)
 public class MinecraftMixin {
 	
-	@Inject(method = "runTick", at = @At(value = "INVOKE_STRING", target = "Lcom/mojang/blaze3d/platform/Window;setErrorSection(Ljava/lang/String;)V", args = "ldc=Render"))
+	// 26.3 renamed the old "Render" profiler/error-section markers. Inject at
+	// stable method boundaries rather than into version-specific marker strings.
+	@Inject(method = "runTick", at = @At("HEAD"))
 	public void updateRunTick(boolean doTick, CallbackInfo info) {
 		WaylandCraft.instance.update();
 	}
 	
-	@Inject(method = "renderFrame", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/util/profiling/ProfilerFiller;push(Ljava/lang/String;)V", args = "ldc=present"))
+	@Inject(method = "renderFrame", at = @At("TAIL"))
 	public void hotfixRenderFrame(boolean advanceGameTime, CallbackInfo info) {
 		WindowTranslucencyHotfix.render();
 	}
