@@ -4,8 +4,8 @@ import java.nio.ByteBuffer;
 import java.util.Optional;
 
 import org.joml.Vector4f;
-import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL33;
+import org.lwjgl.sdl.SDLVideo;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -265,7 +265,7 @@ public abstract class BufferTexture {
 			super(buf.width(), buf.height(), BufferTexture.FORMAT_ARGB8888);
 			this.handle = buf.handle();
 			
-			target = new TextureTarget("dmabuf-target-" + this.hashCode(), width, height, false, GpuFormat.RGBA8_UNORM);
+			target = new TextureTarget("dmabuf-target-" + this.hashCode(), width, height, GpuFormat.RGBA8_UNORM, null);
 		}
 		
 		// Destroys internal data
@@ -281,9 +281,9 @@ public abstract class BufferTexture {
 			if(internalTexture == null) return;
 			
 			try(RenderPass renderPass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Dmabuf blit", target.getColorTextureView(), Optional.of(new Vector4f(0, 0, 0, 0)))) {
-				renderPass.setPipeline(DMABUF_BLIT);
+				renderPass.setPipeline(RenderSystem.getCompiledPipeline(DMABUF_BLIT));
 				RenderSystem.bindDefaultUniforms(renderPass);
-				renderPass.bindTexture("InSampler", internalView, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
+				renderPass.setUniform("InSampler", internalView, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
 				renderPass.draw(3, 1, 0, 0);
 			}
 		}
@@ -333,7 +333,7 @@ public abstract class BufferTexture {
 			GlStateManager._texParameter(GL33.GL_TEXTURE_2D, GL33.GL_TEXTURE_MIN_FILTER, GL33.GL_LINEAR);
 			GlStateManager._texParameter(GL33.GL_TEXTURE_2D, GL33.GL_TEXTURE_MAG_FILTER, GL33.GL_NEAREST);
 			
-			long glEGLImageTargetTexture2DOES = GLFW.glfwGetProcAddress("glEGLImageTargetTexture2DOES");
+			long glEGLImageTargetTexture2DOES = SDLVideo.SDL_GL_GetProcAddress("glEGLImageTargetTexture2DOES");
 			JNI.invokeJV(GL33.GL_TEXTURE_2D, eglImage, glEGLImageTargetTexture2DOES);
 			
 			GlTexture glTexture = IGlTextureMixin.createTexture(GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_TEXTURE_BINDING, "eglimage-" + this.hashCode(), GpuFormat.RGBA8_UINT, width, height, 1, 1, eglImageTex, ((GlDevice) ((FrontendGpuDevice) RenderSystem.getDevice()).backend).frameBufferCache());

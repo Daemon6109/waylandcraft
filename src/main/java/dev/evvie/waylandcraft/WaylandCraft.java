@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.Platform;
 
 import com.mojang.blaze3d.platform.InputConstants;
@@ -122,9 +121,9 @@ public class WaylandCraft implements ClientModInitializer {
 		
 		instance = this;
 		
-		keyOpenScreen = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.windowManager", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, KEYBIND_CATEGORY));
-		keyOpenAppLauncher = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.appLauncher", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, KEYBIND_CATEGORY));
-		keyCaptureKeyboard = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.captureKeyboard", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, KEYBIND_CATEGORY));
+		keyOpenScreen = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.windowManager", InputConstants.Type.KEYBOARD, InputConstants.KEY_B, KEYBIND_CATEGORY));
+		keyOpenAppLauncher = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.appLauncher", InputConstants.Type.KEYBOARD, InputConstants.KEY_V, KEYBIND_CATEGORY));
+		keyCaptureKeyboard = KeyMappingHelper.registerKeyMapping(new KeyMapping("waylandcraft.key.captureKeyboard", InputConstants.Type.KEYBOARD, InputConstants.KEY_G, KEYBIND_CATEGORY));
 		
 		WindowItemModel.register();
 		
@@ -208,7 +207,7 @@ public class WaylandCraft implements ClientModInitializer {
 			bridge.focusSurface(focus);
 		}
 		
-		Camera camera = ctx.camera();
+		Camera camera = Minecraft.getInstance().gameRenderer.mainCamera();
 		processPointerMotion(camera);
 		
 		if(Minecraft.getInstance().player == null || !Minecraft.getInstance().player.isUsingItem()) playerUsingWindowItem = false;
@@ -265,7 +264,7 @@ public class WaylandCraft implements ClientModInitializer {
 		
 		itemManager.giveItemsIfMissing(bridge.getNewToplevels());
 		
-		boolean inWMScreen = Minecraft.getInstance().screen instanceof WindowManagerScreen;
+		boolean inWMScreen = Minecraft.getInstance().gui.screen() instanceof WindowManagerScreen;
 		
 		// Make sure the toplevels are focused in their respective order and being refocused when a toplevel disappears
 		if(!inWMScreen) {
@@ -476,9 +475,9 @@ public class WaylandCraft implements ClientModInitializer {
 	}
 	
 	public void destroyPointerOverlay() {
-		if(Minecraft.getInstance().getOverlay() instanceof PointerCaptureOverlay overlay) {
+		if(Minecraft.getInstance().gui.overlay() instanceof PointerCaptureOverlay overlay) {
 			overlay.destroy();
-			Minecraft.getInstance().setOverlay(null);
+			Minecraft.getInstance().gui.setOverlay(null);
 		}
 	}
 	
@@ -721,7 +720,7 @@ public class WaylandCraft implements ClientModInitializer {
 	public boolean onKeyPress(long windowHandle, int key, int scancode, int action, int modifiers) {
 		if(bridge == null) return false;
 		
-		if(key == GLFW.GLFW_KEY_Q && modifiers == GLFW.GLFW_MOD_ALT) {
+		if(key == InputConstants.KEY_Q && modifiers == InputConstants.MOD_ALT) {
 			if(action == 0) return true;
 			
 			if(keyboardCaptureMode != KeyboardCaptureMode.HARD_CAPTURE) {
@@ -735,15 +734,15 @@ public class WaylandCraft implements ClientModInitializer {
 		
 		if(keyboardCaptureMode == KeyboardCaptureMode.NONE) return false;
 		
-		if(keyboardCaptureMode == KeyboardCaptureMode.CAPTURE && key == GLFW.GLFW_KEY_ESCAPE) {
+		if(keyboardCaptureMode == KeyboardCaptureMode.CAPTURE && key == InputConstants.KEY_ESCAPE) {
 			disableKeyboardCapture();
 			return true;
 		}
 		
-		if(action == GLFW.GLFW_PRESS) {
+		if(action == InputConstants.PRESS) {
 			bridge.pressKey(scancode);
 		}
-		else if(action == GLFW.GLFW_RELEASE) {
+		else if(action == InputConstants.RELEASE) {
 			bridge.releaseKey(scancode);
 		}
 		
@@ -751,9 +750,8 @@ public class WaylandCraft implements ClientModInitializer {
 	}
 	
 	public static int correctScancode(int scancode) {
-		if(GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_WAYLAND) {
-			scancode += 8;
-		}
+		// SDL exposes Linux scancodes directly; GLFW's Wayland-specific +8 offset
+		// is no longer applicable in Minecraft 26.3.
 		return scancode;
 	}
 	
@@ -819,7 +817,7 @@ public class WaylandCraft implements ClientModInitializer {
 		public MotionPointerCapture(WindowDisplay display, Collection<Integer> pressedButtons) {
 			super(display, null, pressedButtons);
 			
-			if(Minecraft.getInstance().getOverlay() == null) Minecraft.getInstance().setOverlay(new PointerCaptureOverlay());
+			if(Minecraft.getInstance().gui.overlay() == null) Minecraft.getInstance().gui.setOverlay(new PointerCaptureOverlay());
 		}
 		
 		public MotionPointerCapture(WindowDisplay display) {
@@ -843,37 +841,13 @@ public class WaylandCraft implements ClientModInitializer {
 		}
 		
 		@Override
-		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-			if(!(pointerCapture instanceof MotionPointerCapture motionCapture)) return;
-			
-			Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-			Camera.NearPlane plane = camera.getNearPlane(Minecraft.getInstance().options.fov().get().intValue());
-			MouseHandler mouseHandler = Minecraft.getInstance().mouseHandler;
-			Window window = Minecraft.getInstance().getWindow();
-			
-			double rx = mouseHandler.xpos() / window.getWidth() * 2 - 1;
-			double ry = -(mouseHandler.ypos() / window.getHeight() * 2 - 1);
-			
-			Vec3 pos = camera.position();
-			Vec3 look = plane.getPointOnPlane((float) rx, (float) ry).normalize();
-			
-			DisplayHitResult result = pointerCapture.display.intersect(pos, look);
-			if(result.isMiss()) {
-				bridge.sendMotionOutside();
-				motionCapture.surface = null;
-			}
-			else {
-				bridge.sendMotionRefocus(result.surface, result.surfaceLocalRelative.x, result.surfaceLocalRelative.y);
-				motionCapture.surface = result.surface;
-			}
-		}
-		
+		public boolean isPausing() { return false; }
+
 		@Override
-		public boolean isPauseScreen() {
-			return false;
+		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+			// This transparent overlay only owns mouse capture; it intentionally emits no GUI state.
 		}
 		
 	}
 	
 }
-

@@ -7,8 +7,6 @@
 		"GlBackendMixin",
 		"KeyboardHandlerMixin",
 		"IMouseHandlerMixin",
-		"ItemInHandRendererMixin",
-		"IItemInHandRendererMixin",
 		"MinecraftMixin",
 		"HudMixin",
 		"NativeImageMixin",

@@ -37,8 +37,6 @@ import dev.evvie.waylandcraft.bridge.WLCSurface.ViewportSource;
 import dev.evvie.waylandcraft.displays.FramebufferRenderable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.BindGroupLayouts;
-import net.minecraft.client.renderer.DynamicUniformStorage;
-import net.minecraft.client.renderer.DynamicUniformStorage.DynamicUniform;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
@@ -86,7 +84,6 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		.build()
 	);
 	
-	private static DynamicUniformStorage<WindowInfoUniform> uniformStorage = null;
 	private static boolean debugDamage = false;
 	
 	public final WLCSurface surfaceTree;
@@ -105,13 +102,8 @@ public class WindowFramebuffer implements FramebufferRenderable {
 	}
 	
 	public static void endFrame() {
-		if(uniformStorage != null) uniformStorage.endFrame();
-	}
-	
-	private static void ensureUniformStorage() {
-		if(uniformStorage == null) {
-			uniformStorage = new DynamicUniformStorage<WindowInfoUniform>("window framebuffer", WindowInfoUniform.SIZE, 2);
-		}
+		// DynamicUniformStorage was removed in 26.3. Uniform buffers are now
+		// ordinary per-frame GPU buffers and are released after the frame below.
 	}
 	
 	private void updateTarget() {
@@ -148,11 +140,11 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		if(width != prevWidth || height != prevHeight) destroy();
 		
 		if(tempTarget == null) {
-			tempTarget = new TextureTarget(name() + "-temp", width, height, false, GpuFormat.RGBA8_UNORM);
+			tempTarget = new TextureTarget(name() + "-temp", width, height, GpuFormat.RGBA8_UNORM, null);
 		}
 		
 		if(target == null) {
-			target = new TextureTarget(name(), width, height, false, GpuFormat.RGBA8_UNORM);
+			target = new TextureTarget(name(), width, height, GpuFormat.RGBA8_UNORM, null);
 		}
 		
 		if(texture == null) registerTexture();
@@ -176,16 +168,15 @@ public class WindowFramebuffer implements FramebufferRenderable {
 			if(draw != null) elements.add(draw.compile());
 		}
 		
-		ensureUniformStorage();
-		GpuBufferSlice alphaUniforms = uniformStorage.writeUniform(new WindowInfoUniform(poseStack.last().pose(), true));
-		GpuBufferSlice opaqueUniforms = uniformStorage.writeUniform(new WindowInfoUniform(poseStack.last().pose(), false));
+		GpuBuffer alphaUniforms = createUniformBuffer(poseStack.last().pose(), true);
+		GpuBuffer opaqueUniforms = createUniformBuffer(poseStack.last().pose(), false);
 		
 		try {
 			try(RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "window framebuffer", tempTarget.getColorTextureView(), Optional.of(new Vector4f(0, 0, 0, 0)))) {
-				pass.setPipeline(WINDOW_PIPELINE);
+				pass.setPipeline(RenderSystem.getCompiledPipeline(WINDOW_PIPELINE));
 				for(CompiledBufferDraw element : elements) {
 					pass.setUniform("WindowInfo", element.alpha ? alphaUniforms : opaqueUniforms);
-					pass.bindTexture("Sampler0", element.textureView, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
+					pass.setUniform("Sampler0", element.textureView, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
 					pass.setVertexBuffer(0, element.vertexBuffer.slice());
 					pass.setIndexBuffer(element.indexBuffer, element.indexType);
 					pass.drawIndexed(element.indexCount, 1, 0, 0, 0);
@@ -201,13 +192,17 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		if(debugDamage) drawDebugDamage(opaqueUniforms);
 		
 		try(RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "window framebuffer unpremultiply", target.getColorTextureView(), Optional.empty())) {
-			pass.setPipeline(UNPREMULTIPLY_PIPELINE);
-			pass.bindTexture("Sampler0", tempTarget.getColorTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
+			pass.setPipeline(RenderSystem.getCompiledPipeline(UNPREMULTIPLY_PIPELINE));
+			pass.setUniform("Sampler0", tempTarget.getColorTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
 			pass.draw(3, 1, 0, 0);
+		}
+		finally {
+			alphaUniforms.close();
+			opaqueUniforms.close();
 		}
 	}
 	
-	private void drawDebugDamage(GpuBufferSlice opaqueUniforms) {
+	private void drawDebugDamage(GpuBuffer opaqueUniforms) {
 		ArrayList<CompiledBufferDraw> damageElements = new ArrayList<>();
 		for(WLCSurface surface = surfaceTree; surface != null; surface = surface.getNextChild()) {
 			int sx = xoff + surface.xSubpos;
@@ -220,7 +215,7 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		
 		try {
 			try(RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "window framebuffer damage", tempTarget.getColorTextureView(), Optional.empty())) {
-				pass.setPipeline(DAMAGE_PIPELINE);
+				pass.setPipeline(RenderSystem.getCompiledPipeline(DAMAGE_PIPELINE));
 				pass.setUniform("WindowInfo", opaqueUniforms);
 				for(CompiledBufferDraw element : damageElements) {
 					pass.setVertexBuffer(0, element.vertexBuffer.slice());
@@ -355,11 +350,17 @@ public class WindowFramebuffer implements FramebufferRenderable {
 		
 	}
 	
-	private static record WindowInfoUniform(Matrix4fc mat, boolean alpha) implements DynamicUniform {
+	private static GpuBuffer createUniformBuffer(Matrix4fc mat, boolean alpha) {
+		ByteBuffer bytes = ByteBuffer.allocateDirect(WindowInfoUniform.SIZE);
+		new WindowInfoUniform(mat, alpha).write(bytes);
+		bytes.flip();
+		return RenderSystem.getDevice().createBuffer(() -> "waylandcraft window uniform", GpuBuffer.USAGE_UNIFORM | GpuBuffer.USAGE_COPY_DST, bytes);
+	}
+
+	private static record WindowInfoUniform(Matrix4fc mat, boolean alpha) {
 		
 		public static final int SIZE = new Std140SizeCalculator().putMat4f().putFloat().get();
 		
-		@Override
 		public void write(ByteBuffer byteBuffer) {
 			Std140Builder.intoBuffer(byteBuffer).putMat4f(mat).putFloat(alpha ? 0.0f : 1.0f);
 		}

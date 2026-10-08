@@ -8,7 +8,6 @@ import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3x2fStack;
-import org.lwjgl.glfw.GLFW;
 
 import dev.evvie.waylandcraft.WaylandCraft;
 import dev.evvie.waylandcraft.WaylandCraftCommon;
@@ -25,6 +24,7 @@ import dev.evvie.waylandcraft.render.RenderUtils;
 import dev.evvie.waylandcraft.render.WindowFramebuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ImageWidget;
@@ -199,7 +199,7 @@ public class WindowManagerScreen extends Screen {
 		if(focused == null || focused.fullscreen) return;
 		
 		wlc.bridge.sendMotionOutside();
-		GLFW.glfwSetInputMode(Minecraft.getInstance().getWindow().handle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
+		Minecraft.getInstance().mouseHandler.grabMouse();
 		
 		resizeMode = true;
 		resizeToplevel = focused;
@@ -239,13 +239,12 @@ public class WindowManagerScreen extends Screen {
 		if(resizeToplevel != null && resizeToplevel.isAlive()) wlc.bridge.resizeToplevel(resizeToplevel, resizeWidth, resizeHeight);
 		
 		long window = Minecraft.getInstance().getWindow().handle();
-		GLFW.glfwSetInputMode(window, GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
+		Minecraft.getInstance().mouseHandler.releaseMouse();
 		
 		/* <HACK> */
 		/* The following code makes the game remember at what position the cursor is after it was moved in disabled mode during resize */
-		double mouseX[] = new double[1];
-		double mouseY[] = new double[1];
-		GLFW.glfwGetCursorPos(window, mouseX, mouseY);
+		double mouseX[] = { Minecraft.getInstance().mouseHandler.xpos() };
+		double mouseY[] = { Minecraft.getInstance().mouseHandler.ypos() };
 		
 		MouseHandler mouseHandler = Minecraft.getInstance().mouseHandler;
 		mouseHandler.setIgnoreFirstMove(); // don't accumulate any movement in accumulatedDX,DY
@@ -509,12 +508,12 @@ public class WindowManagerScreen extends Screen {
 	
 	@Override
 	public boolean keyPressed(KeyEvent event) {
-		if(event.key() == GLFW.GLFW_KEY_ESCAPE && !captureModeEnabled) {
+		if(event.key() == InputConstants.KEY_ESCAPE && !captureModeEnabled) {
 			this.onClose();
 			return true;
 		}
 		
-		if(event.key() == GLFW.GLFW_KEY_Q && event.modifiers() == GLFW.GLFW_MOD_ALT) {
+		if(event.key() == InputConstants.KEY_Q && event.modifiers() == InputConstants.MOD_ALT) {
 			captureModeEnabled = !captureModeEnabled;
 			return true;
 		}
@@ -526,7 +525,7 @@ public class WindowManagerScreen extends Screen {
 		
 		// Forward key press to current window
 		if(focused != null) {
-			int scancode = WaylandCraft.correctScancode(event.scancode());
+			int scancode = WaylandCraft.correctScancode(event.keycode());
 			wlc.bridge.pressKey(scancode);
 			return true;
 		}
@@ -541,7 +540,7 @@ public class WindowManagerScreen extends Screen {
 		if(super.keyReleased(event)) return true;
 		
 		if(focused != null) {
-			int scancode = WaylandCraft.correctScancode(event.scancode());
+			int scancode = WaylandCraft.correctScancode(event.keycode());
 			wlc.bridge.releaseKey(scancode);
 			return true;
 		}

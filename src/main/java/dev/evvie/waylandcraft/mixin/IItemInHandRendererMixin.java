@@ -1,18 +1,8 @@
 package dev.evvie.waylandcraft.mixin;
 
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.gen.Invoker;
-
-import com.mojang.blaze3d.vertex.PoseStack;
-
-import net.minecraft.client.renderer.ItemInHandRenderer;
-import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.world.entity.HumanoidArm;
-
-@Mixin(ItemInHandRenderer.class)
+/**
+ * Kept as a binary source placeholder while the 26.3 extracted first-person
+ * item renderer is integrated. It is intentionally not listed as a mixin.
+ */
 public interface IItemInHandRendererMixin {
-	
-	@Invoker("renderPlayerArm")
-	void invokeRenderPlayerArm(PoseStack poseStack, SubmitNodeCollector collector, int light, float handHeight, float attack, HumanoidArm humanoidArm);
-	
 }
